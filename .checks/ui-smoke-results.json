@@ -1,0 +1,205 @@
+{
+  "ok": true,
+  "results": [
+    {
+      "name": "layout 390x844",
+      "ok": true,
+      "detail": {
+        "mic": [
+          40,
+          40
+        ],
+        "send": [
+          36,
+          36
+        ],
+        "micBackground": "linear-gradient(145deg, rgb(244, 35, 50), rgb(223, 15, 31))",
+        "micColor": "rgb(255, 255, 255)",
+        "sendBackground": "rgb(242, 243, 246)",
+        "composerHeight": 90,
+        "chatFraction": 0.66,
+        "logoSize": [
+          816,
+          195
+        ]
+      }
+    },
+    {
+      "name": "layout 320x640",
+      "ok": true,
+      "detail": {
+        "mic": [
+          40,
+          40
+        ],
+        "send": [
+          36,
+          36
+        ],
+        "micBackground": "linear-gradient(145deg, rgb(244, 35, 50), rgb(223, 15, 31))",
+        "micColor": "rgb(255, 255, 255)",
+        "sendBackground": "rgb(242, 243, 246)",
+        "composerHeight": 87,
+        "chatFraction": 0.61,
+        "logoSize": [
+          816,
+          195
+        ]
+      }
+    },
+    {
+      "name": "layout 768x1024",
+      "ok": true,
+      "detail": {
+        "mic": [
+          44,
+          44
+        ],
+        "send": [
+          40,
+          40
+        ],
+        "micBackground": "linear-gradient(145deg, rgb(244, 35, 50), rgb(223, 15, 31))",
+        "micColor": "rgb(255, 255, 255)",
+        "sendBackground": "rgb(242, 243, 246)",
+        "composerHeight": 98,
+        "chatFraction": 0.65,
+        "logoSize": [
+          816,
+          195
+        ]
+      }
+    },
+    {
+      "name": "layout 1440x1000",
+      "ok": true,
+      "detail": {
+        "mic": [
+          44,
+          44
+        ],
+        "send": [
+          40,
+          40
+        ],
+        "micBackground": "linear-gradient(145deg, rgb(244, 35, 50), rgb(223, 15, 31))",
+        "micColor": "rgb(255, 255, 255)",
+        "sendBackground": "rgb(242, 243, 246)",
+        "composerHeight": 98,
+        "chatFraction": 0.64,
+        "logoSize": [
+          816,
+          195
+        ]
+      }
+    },
+    {
+      "name": "layout 844x390",
+      "ok": true,
+      "detail": {
+        "mic": [
+          36,
+          36
+        ],
+        "send": [
+          32,
+          32
+        ],
+        "micBackground": "linear-gradient(145deg, rgb(244, 35, 50), rgb(223, 15, 31))",
+        "micColor": "rgb(255, 255, 255)",
+        "sendBackground": "rgb(242, 243, 246)",
+        "composerHeight": 73,
+        "chatFraction": 0.53,
+        "logoSize": [
+          816,
+          195
+        ]
+      }
+    },
+    {
+      "name": "menu toggle, Escape and outside dismissal",
+      "ok": true
+    },
+    {
+      "name": "audio preference in compact menu",
+      "ok": true
+    },
+    {
+      "name": "voice guidance from menu",
+      "ok": true
+    },
+    {
+      "name": "BHYT, form and neighborhood shortcuts",
+      "ok": true
+    },
+    {
+      "name": "text Enter greeting to real Flask /chat",
+      "ok": true
+    },
+    {
+      "name": "clear restores welcome and closes menu",
+      "ok": true
+    },
+    {
+      "name": "voice start and accessible listening state",
+      "ok": true
+    },
+    {
+      "name": "interim transcript without submission",
+      "ok": true
+    },
+    {
+      "name": "final transcript submits and onend preserves processing",
+      "ok": true
+    },
+    {
+      "name": "no-speech feedback survives onend",
+      "ok": true
+    },
+    {
+      "name": "microphone permission feedback survives onend",
+      "ok": true
+    },
+    {
+      "name": "unsupported voice browser fallback hint",
+      "ok": true
+    },
+    {
+      "name": "long formatted reply scrolls above compact composer",
+      "ok": true,
+      "detail": {
+        "scrollable": true,
+        "atLatest": true,
+        "lastBottom": 731.703125,
+        "composerTop": 754,
+        "overflow": false,
+        "micWidth": 40,
+        "headings": 3
+      }
+    },
+    {
+      "name": "normal motion entrance settles with visible voice invitation",
+      "ok": true,
+      "detail": [
+        "headerEnter",
+        "logoEnter",
+        "serviceEnter",
+        "composerEnter",
+        "messageFromLeft",
+        "avatarHello"
+      ]
+    },
+    {
+      "name": "animated menu, messages, send and microphone clean up without moving controls",
+      "ok": true,
+      "detail": {
+        "composerHeight": 90,
+        "chatHeight": 557.796875
+      }
+    },
+    {
+      "name": "reduced motion disables animation and smooth scrolling while controls still work",
+      "ok": true
+    }
+  ]
+}

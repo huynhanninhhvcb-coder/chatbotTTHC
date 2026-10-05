@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mẫu đơn, tờ khai - Phường Minh Phụng</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+            --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+            --color-bg: #F7F8F8;
+            --color-surface: #FFFFFF;
+            --color-border: #E1E5E8;
+            --color-navy: #0A2540;
+            --color-muted: #68737D;
+            --color-accent-1: #B65A38;
+            --color-accent-2: #A95234;
+            --color-accent-soft: #FBEFE9;
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --shadow-card: 0 9px 26px rgba(10, 37, 64, 0.07);
+            --ease: cubic-bezier(.4, 0, .2, 1);
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--color-bg);
+            color: var(--color-navy);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container { max-width: 1000px; margin: 0 auto; }
+
+        .header { margin-bottom: 28px; }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 11px;
+            border-radius: 7px;
+            background: var(--color-accent-soft);
+            color: var(--color-accent-2);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 14px;
+        }
+
+        .header h1 {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 30px;
+            letter-spacing: -0.02em;
+        }
+
+        .header p {
+            margin-top: 8px;
+            color: var(--color-muted);
+            font-size: 14px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 14px;
+            margin-bottom: 28px;
+        }
+
+        .folder-card {
+            background: var(--color-surface);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--color-border);
+            overflow: hidden;
+            transition: all 0.2s var(--ease);
+        }
+        .folder-card:hover {
+            border-color: var(--color-accent-2);
+            box-shadow: var(--shadow-card);
+            transform: translateY(-2px);
+        }
+
+        .folder-btn {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            background: none;
+            border: none;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            font-family: var(--font-sans);
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--color-navy);
+            gap: 13px;
+        }
+        .folder-icon {
+            font-size: 1.5rem;
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-sm);
+            background: var(--color-accent-soft);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .folder-name { flex: 1; color: var(--color-accent-2); }
+
+        .back-btn {
+            display: inline-block;
+            background: var(--color-surface);
+            color: var(--color-accent-2);
+            border: 1.5px solid var(--color-accent-2);
+            padding: 9px 20px;
+            border-radius: var(--radius-sm);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 13px;
+            transition: all 0.2s var(--ease);
+        }
+        .back-btn:hover { background: var(--color-accent-2); color: #fff; }
+
+        .error-message {
+            background: #FBEFE9;
+            color: #8A4A2E;
+            padding: 15px;
+            border-radius: var(--radius-md);
+            text-align: center;
+            margin: 20px 0;
+            font-weight: 500;
+            font-size: 13.5px;
+        }
+
+        .center { text-align: center; }
+
+        @media (max-width: 600px) {
+            .header h1 { font-size: 24px; }
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <span class="eyebrow">● DỊCH VỤ HỖ TRỢ</span>
+        <h1>Mẫu đơn, tờ khai</h1>
+        <p>Chọn loại mẫu đơn bạn cần tải về</p>
+    </div>
+
+    {% if error %}
+    <div class="error-message">
+        ⚠️ {{ error }}<br>
+        Vui lòng kiểm tra kết nối hoặc thử lại sau.
+    </div>
+    {% endif %}
+
+    <div class="grid">
+        {% for folder in folders %}
+        <div class="folder-card">
+            <button class="folder-btn" onclick="window.open('https://drive.google.com/drive/folders/{{ folder.id }}', '_blank')">
+                <span class="folder-icon">📁</span>
+                <span class="folder-name">{{ folder.name }}</span>
+            </button>
+        </div>
+        {% else %}
+            {% if not error %}
+            <div class="error-message">
+                📭 Không tìm thấy folder mẫu đơn nào. Hãy đảm bảo thư mục được chia sẻ công khai.
+            </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    <div class="center">
+        <a href="/" class="back-btn">← Quay lại chatbot</a>
+    </div>
+</div>
+</body>
+</html>
