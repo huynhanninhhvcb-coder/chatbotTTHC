@@ -1,8 +1,8 @@
 """
-Đồng bộ thư mục tailieu_pdf/ lên vector store của OpenAI để chatbot tra cứu
+Đồng bộ thư mục thutuc_data/ lên vector store của OpenAI để chatbot tra cứu
 nội dung PDF bằng công cụ file_search (xem ai_engine.py).
 
-Cách dùng: chép/xóa/sửa file PDF trong tailieu_pdf/ rồi chạy
+Cách dùng: chép/xóa/sửa file PDF trong thutuc_data/ rồi chạy
     python sync_pdf.py
 
 Script so sánh mã băm (SHA-256) từng file với lần đồng bộ trước (lưu trong

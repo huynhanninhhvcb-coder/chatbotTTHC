@@ -33,7 +33,7 @@ CHAT_MODEL = "gpt-6-luna"
 # Chép file PDF vào thư mục này rồi chạy `python sync_pdf.py` để đẩy lên
 # vector store của OpenAI - chatbot sẽ tra cứu trong đó bằng công cụ
 # file_search (ưu tiên hơn tra cứu web).
-PDF_DIR = os.path.join(BASE_DIR, 'tailieu_pdf')
+PDF_DIR = os.path.join(BASE_DIR, 'thutuc_data')
 # File lưu trạng thái đồng bộ (ID vector store + ID/mã băm từng file đã đẩy
 # lên), do sync_pdf.py ghi và ai_engine.py đọc. Không sửa tay.
 PDF_INDEX_FILE = os.path.join(BASE_DIR, 'pdf_index.json')

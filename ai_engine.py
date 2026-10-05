@@ -19,7 +19,7 @@ cụ thể...) mà tra cứu web cũng không chắc chắn, AI vẫn phải khu
 xác minh trực tiếp tại nơi tiếp nhận thay vì khẳng định bừa.
 
 Nguồn tra cứu thứ hai: tài liệu PDF do phường tự tải lên (thư mục
-tailieu_pdf/, đồng bộ bằng sync_pdf.py lên vector store của OpenAI), tra cứu
+thutuc_data/, đồng bộ bằng sync_pdf.py lên vector store của OpenAI), tra cứu
 bằng công cụ file_search. Khi đã có tài liệu, AI ưu tiên PDF trước, chỉ tra
 cứu web để bổ sung phần PDF không có; mâu thuẫn thì theo PDF.
 
@@ -29,6 +29,7 @@ fallback sang một câu trả lời xin lỗi + hướng dẫn liên hệ trự
 không được phép "sập" chỉ vì AI lỗi.
 """
 import re
+import time
 
 from openai import OpenAI
 
@@ -36,6 +37,49 @@ from config import OPENAI_API_KEY, CHAT_MODEL, WARD_OFFICE_ADDRESS
 from sync_pdf import load_index
 
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+
+# ==================== TỐI ƯU TỐC ĐỘ ====================
+# Đo thực tế (10/2026, câu "Thủ tục đăng ký khai sinh cần những gì?"): cấu hình
+# mặc định (reasoning medium, không giới hạn nguồn) mất ~18,6s vì model tra
+# web tới 4 vòng; với 3 thiết lập dưới đây còn ~8,3s, nội dung vẫn đủ 3 mục.
+# Lưu ý: effort "minimal" nhanh hơn nữa nhưng OpenAI không cho dùng kèm web_search.
+REASONING_EFFORT = "low"
+# Chỉ tra cứu trong các trang chính thống (đúng các nguồn system prompt yêu
+# cầu) để model không phải lục tìm nhiều vòng trên toàn bộ web.
+ALLOWED_DOMAINS = ["dichvucong.gov.vn", "thuvienphapluat.vn", "chinhphu.vn", "moj.gov.vn"]
+WEB_SEARCH_TOOL = {
+    "type": "web_search",
+    "search_context_size": "low",
+    "filters": {"allowed_domains": ALLOWED_DOMAINS},
+    "user_location": {"type": "approximate", "country": "VN"},
+}
+
+# Bộ nhớ đệm câu trả lời: người dân thường hỏi lặp lại cùng một thủ tục (khai
+# sinh, tạm trú...), nên câu hỏi giống hệt sẽ trả lời ngay thay vì gọi lại AI.
+# Chỉ áp dụng cho câu hỏi ĐẦU TIÊN (không có lịch sử), vì câu hỏi nối tiếp
+# kiểu "vậy còn phí thì sao" phụ thuộc ngữ cảnh. Lưu trong RAM của từng tiến
+# trình server, mất khi server khởi động lại - chấp nhận được.
+CACHE_TTL_SECONDS = 24 * 3600
+CACHE_MAX_ITEMS = 500
+_answer_cache = {}
+
+
+def _cache_key(question, vs_id):
+    # Gắn kèm vs_id để khi đồng bộ tài liệu PDF mới thì không dùng lại câu trả lời cũ.
+    return (vs_id, ' '.join(question.lower().split()))
+
+
+def _cache_get(key):
+    item = _answer_cache.get(key)
+    if item and time.time() - item[0] < CACHE_TTL_SECONDS:
+        return item[1]
+    return None
+
+
+def _cache_set(key, answer):
+    if len(_answer_cache) >= CACHE_MAX_ITEMS:
+        _answer_cache.pop(next(iter(_answer_cache)), None)  # bỏ mục cũ nhất
+    _answer_cache[key] = (time.time(), answer)
 
 # Khi dùng công cụ web_search, model có xu hướng TỰ ĐỘNG chèn trích dẫn dạng
 # "([domain.vn](https://...))" ngay sau câu - đây là hành vi mặc định của
@@ -130,12 +174,18 @@ def generate_answer(question, history=None):
     if not client:
         return None
 
-    tools = [{"type": "web_search"}]
+    tools = [WEB_SEARCH_TOOL]
     system_prompt = SYSTEM_PROMPT
     vs_id = _pdf_vector_store_id()
     if vs_id:
         tools.insert(0, {"type": "file_search", "vector_store_ids": [vs_id], "max_num_results": 8})
         system_prompt = SYSTEM_PROMPT_WITH_PDF
+
+    cache_key = None if history else _cache_key(question, vs_id)
+    if cache_key:
+        cached = _cache_get(cache_key)
+        if cached:
+            return cached
 
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(history or [])
@@ -144,10 +194,14 @@ def generate_answer(question, history=None):
     try:
         resp = client.responses.create(
             model=CHAT_MODEL,
+            reasoning={"effort": REASONING_EFFORT},
             tools=tools,
             input=messages,
         )
-        return _strip_links(resp.output_text)
+        answer = _strip_links(resp.output_text)
+        if cache_key and answer:
+            _cache_set(cache_key, answer)
+        return answer
     except Exception as e:
         print(f"⚠️ Lỗi gọi OpenAI Responses API: {e}")
         return None
