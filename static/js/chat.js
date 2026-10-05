@@ -29,6 +29,9 @@ let conversationVersion = 0;
 // Lịch sử hỏi-đáp gần nhất, gửi kèm mỗi câu hỏi để AI hiểu câu hỏi nối tiếp.
 const MAX_HISTORY_MESSAGES = 6;
 let chatHistory = [];
+// Server gửi kèm danh sách câu hỏi gợi ý (JSON) sau ký tự này, ở cuối câu
+// trả lời (xem SUGGESTIONS_SEPARATOR trong ai_engine.py).
+const SUGGESTIONS_SEPARATOR = "\x1e";
 
 function escapeHtml(value) {
   return String(value ?? "").replace(
@@ -249,12 +252,7 @@ function updateControls() {
   });
 }
 
-function renderMessage({
-  content,
-  isUser = false,
-  suggestions,
-  scroll = true,
-}) {
+function renderMessage({ content, isUser = false, scroll = true }) {
   const message = document.createElement("div");
   message.className = `message ${isUser ? "user" : "bot"}`;
   const wrapper = document.createElement("div");
@@ -272,23 +270,6 @@ function renderMessage({
   wrapper.appendChild(contentElement);
   message.appendChild(wrapper);
 
-  if (!isUser && Array.isArray(suggestions) && suggestions.length) {
-    const quickReplies = document.createElement("div");
-    quickReplies.className = "quick-replies";
-    suggestions
-      .filter((suggestion) => typeof suggestion === "string")
-      .forEach((suggestion) => {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "chip-btn";
-        button.textContent = suggestion;
-        button.disabled = isRequestPending || isClearing;
-        button.addEventListener("click", () => sendMessage(suggestion));
-        quickReplies.appendChild(button);
-      });
-    message.appendChild(quickReplies);
-  }
-
   const time = document.createElement("div");
   time.className = "timestamp";
   time.textContent = nowStamp();
@@ -297,6 +278,41 @@ function renderMessage({
   chatMessages.appendChild(message);
   if (scroll) scrollToLatest();
   return contentElement;
+}
+
+// Thêm nút câu hỏi gợi ý dưới câu trả lời (gọi sau khi stream xong, vì danh
+// sách gợi ý đến cuối cùng). Bấm nút = gửi đúng câu đó như người dùng tự hỏi.
+function appendSuggestions(contentElement, suggestions) {
+  const items = suggestions.filter(
+    (suggestion) => typeof suggestion === "string" && suggestion.trim(),
+  );
+  if (!items.length) return;
+  const message = contentElement.closest(".message");
+  const quickReplies = document.createElement("div");
+  quickReplies.className = "quick-replies";
+  items.forEach((suggestion) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "chip-btn";
+    button.textContent = suggestion;
+    button.disabled = isRequestPending || isClearing;
+    button.addEventListener("click", () => sendMessage(suggestion));
+    quickReplies.appendChild(button);
+  });
+  message.insertBefore(
+    quickReplies,
+    message.querySelector(":scope > .timestamp"),
+  );
+}
+
+function parseSuggestions(json) {
+  if (!json) return [];
+  try {
+    const list = JSON.parse(json);
+    return Array.isArray(list) ? list : [];
+  } catch (error) {
+    return [];
+  }
 }
 
 function resetToWelcome() {
@@ -456,12 +472,18 @@ async function sendMessage(message, { fromVoice = false } = {}) {
         hideTypingIndicator();
         contentElement = renderMessage({ content: "" });
       }
-      contentElement.innerHTML = formatMessage(reply);
+      contentElement.innerHTML = formatMessage(
+        reply.split(SUGGESTIONS_SEPARATOR)[0],
+      );
       scrollToLatest();
     }
-    reply = (reply + decoder.decode()).trim();
+    reply += decoder.decode();
+    const [answerText, suggestionsJson] = reply.split(SUGGESTIONS_SEPARATOR);
+    reply = answerText.trim();
     if (!reply) throw new Error("Câu trả lời rỗng");
     contentElement.innerHTML = formatMessage(reply);
+    appendSuggestions(contentElement, parseSuggestions(suggestionsJson));
+    scrollToLatest();
     const context = response.headers.get("X-Context");
     if (context === "reset") chatHistory = [];
     else if (context === "append")

@@ -28,18 +28,35 @@ def chuan_hoa_tim_kiem(text):
     return text
 
 
-def co_tu_khoa(cau_hoi_chuan, tu_khoa_list):
+# Từ xưng hô/đệm lịch sự, không làm thay đổi ý của câu (đã bỏ dấu).
+TU_DEM = [
+    'ban', 'a', 'nhe', 'nha', 'nhen', 'oi', 'xin', 'vang', 'da', 'ok', 'oke', 'okay',
+    'em', 'anh', 'chi', 'co', 'chu', 'bac', 'ong', 'ba', 'minh', 'toi', 'tro ly',
+    'cho', 'hoi', 'voi', 'nhieu', 'rat', 'lam', 'qua',
+]
+
+
+def chi_co_y(cau_hoi_chuan, tu_khoa, tu_phu=()):
     """
-    Kiểm tra câu hỏi có chứa một trong các từ khóa hay không.
-    Từ khóa 1 từ được so khớp theo TỪ NGUYÊN VẸN (tránh việc từ ngắn như
-    "hi" khớp nhầm vào bên trong từ khác, ví dụ "phí"/"chi" sau khi bỏ dấu
-    đều chứa chuỗi con "hi"). Cụm nhiều từ vẫn so khớp theo chuỗi con.
+    True nếu câu hỏi CHỈ mang đúng một ý cố định: có ít nhất một từ khóa, và
+    mọi từ còn lại đều là từ phụ của ý đó hoặc từ đệm lịch sự. Chỉ "có chứa"
+    từ khóa là chưa đủ - VD "Hộ thoát nghèo..." không phải lời tạm biệt,
+    "Chào bạn, cho hỏi thủ tục khai sinh" không chỉ là lời chào, "cấp lại thẻ
+    BHYT" không phải tra cứu hạn thẻ BHYT: các câu đó phải chuyển cho AI.
+    So khớp theo từ nguyên vẹn, ưu tiên cụm dài nhất tại mỗi vị trí.
     """
+    tu_khoa = set(tu_khoa)
+    cum_tu = sorted(tu_khoa | set(tu_phu) | set(TU_DEM), key=lambda c: -len(c.split()))
     words = cau_hoi_chuan.split()
-    for tu in tu_khoa_list:
-        if ' ' in tu:
-            if tu in cau_hoi_chuan:
-                return True
-        elif tu in words:
-            return True
-    return False
+    i = 0
+    found = False
+    while i < len(words):
+        for cum in cum_tu:
+            n = len(cum.split())
+            if words[i:i + n] == cum.split():
+                found = found or cum in tu_khoa
+                i += n
+                break
+        else:
+            return False  # có từ nằm ngoài ý cố định -> câu hỏi khác, để AI trả lời
+    return found

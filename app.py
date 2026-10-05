@@ -5,7 +5,7 @@ from config import (
     SECRET_KEY, GOOGLE_DRIVE_API_KEY, MAU_DON_FOLDER_ID, GOOGLE_DRIVE_API_URL,
     WARD_OFFICE_ADDRESS,
 )
-from search import chuan_hoa_tim_kiem, co_tu_khoa
+from search import chuan_hoa_tim_kiem, chi_co_y
 import ai_engine
 
 app = Flask(__name__)
@@ -28,6 +28,31 @@ def _clean_history(raw):
                if isinstance(m, dict) and m.get('role') in ('user', 'assistant')
                and isinstance(m.get('content'), str)]
     return history[-MAX_HISTORY_MESSAGES:]
+
+
+# ===== Ý CỐ ĐỊNH (trả lời bằng câu soạn sẵn, không gọi AI) =====
+# Mỗi ý gồm (từ khóa, từ phụ được phép đi kèm), đã bỏ dấu. Chỉ trả lời soạn sẵn
+# khi câu hỏi KHÔNG có từ nào khác ngoài các từ này (xem search.chi_co_y); câu
+# hỏi có thêm nội dung khác (VD "cấp lại thẻ BHYT bị mất") được chuyển cho AI.
+Y_CHAO = (['xin chao', 'chao', 'hi', 'hello', 'alo'],
+          ['buoi sang', 'buoi trua', 'buoi chieu', 'buoi toi', 'moi nguoi'])
+Y_CAM_ON = (['cam on', 'thank', 'thanks', 'thank you'],
+            ['da', 'ho tro', 'giup', 'giup do', 'huong dan', 'tu van', 'thong tin', 'vi'])
+Y_TAM_BIET = (['tam biet', 'chao tam biet', 'bye', 'bye bye', 'goodbye', 'hen gap lai'],
+              ['chao'])
+Y_BHYT = (['bhyt', 'bao hiem y te'],
+          ['tra cuu', 'kiem tra', 'xem', 'the', 'han', 'thoi han', 'han su dung', 'su dung',
+           'con han', 'het han chua', 'gia tri', 'ma so', 'ma', 'so', 'online', 'truc tuyen',
+           'cach', 'o dau', 'nhu the nao', 'the nao', 'khong', 'chua', 'con', 'cua',
+           'nguoi than', 'gia dinh', 'trang', 'web', 'link', 'duong dan'])
+Y_MAU_DON = (['mau don', 'bieu mau', 'mau giay', 'mau khai', 'to khai', 'kho mau'],
+             ['tai', 'tai ve', 'download', 'lay', 'o dau', 'cac', 'nhung', 'danh sach', 'kho',
+              'xem', 'can', 'tat ca', 'file', 'ban', 'hanh chinh', 'mau', 'cua', 'phuong',
+              'minh phung', 'khong', 'tim', 'in'])
+Y_KHU_PHO = (['khu pho'],
+             ['thong tin', 'tra cuu', 'danh sach', 'cac', 'xem', 'ban do', 'so do', 'phuong',
+              'minh phung', 'cua', 'trong', 'o dau', 'gom', 'nhung', 'bao nhieu', 'tim',
+              'tat ca', 'dia gioi', 'ranh gioi'])
 
 
 def _reply(text, context=None):
@@ -57,15 +82,16 @@ def chat():
     # ===== TỪ KHÓA ĐẶC BIỆT =====
     # Các nhánh này xử lý trực tiếp bằng quy tắc (không gọi AI) để đảm bảo
     # luôn đúng 100% và không tốn chi phí cho những câu hỏi đơn giản, cố định.
-    if co_tu_khoa(cau_hoi_chuan, ['chao', 'hi', 'hello']):
+    # Chỉ áp dụng khi câu hỏi CHỈ có đúng ý đó (xem các hằng Y_... ở trên).
+    if chi_co_y(cau_hoi_chuan, *Y_CHAO):
         return _reply('Xin chào! Tôi có thể giúp gì cho bạn hôm nay? Hãy hỏi tôi về các thủ tục hành chính công nhé! 🎤', 'reset')
-    if co_tu_khoa(cau_hoi_chuan, ['cam on', 'thank']):
+    if chi_co_y(cau_hoi_chuan, *Y_CAM_ON):
         return _reply('Dạ không có gì ạ! Rất vui được hỗ trợ bạn.')
-    if co_tu_khoa(cau_hoi_chuan, ['tam biet', 'bye', 'thoat']):
+    if chi_co_y(cau_hoi_chuan, *Y_TAM_BIET):
         return _reply('Tạm biệt! Chúc bạn một ngày tốt lành! 👋', 'reset')
 
     # BHYT
-    if co_tu_khoa(cau_hoi_chuan, ['bhyt', 'bao hiem y te', 'tra cuu bhyt']):
+    if chi_co_y(cau_hoi_chuan, *Y_BHYT):
         reply = """🏥 **HƯỚNG DẪN TRA CỨU BHYT**
 
 Bạn vui lòng truy cập trực tiếp vào trang web của Bảo hiểm xã hội Việt Nam theo đường dẫn dưới đây:
@@ -81,7 +107,7 @@ Bạn vui lòng truy cập trực tiếp vào trang web của Bảo hiểm xã h
         return _reply(reply)
 
     # Mẫu đơn (giữ từ khóa cụ thể để không nhầm với câu hỏi "cần giấy tờ gì" của một thủ tục)
-    if co_tu_khoa(cau_hoi_chuan, ['mau don', 'bieu mau', 'mau giay', 'mau khai', 'to khai', 'kho mau']):
+    if chi_co_y(cau_hoi_chuan, *Y_MAU_DON):
         reply = """📄 **KHO MẪU ĐƠN, TỜ KHAI**
 
 Tôi đã chuẩn bị sẵn một kho lưu trữ các mẫu đơn, tờ khai hành chính cho bạn. Hãy bấm nút "Mẫu đơn, tờ khai" trên thanh công cụ để xem danh sách chi tiết.
@@ -92,7 +118,7 @@ Tôi đã chuẩn bị sẵn một kho lưu trữ các mẫu đơn, tờ khai h�
         return _reply(reply)
 
     # Khu phố
-    if co_tu_khoa(cau_hoi_chuan, ['khu pho', 'thong tin khu pho', 'tra cuu khu pho']):
+    if chi_co_y(cau_hoi_chuan, *Y_KHU_PHO):
         reply = """🗺️ **THÔNG TIN KHU PHỐ**
 
 Bạn có thể tra cứu thông tin chi tiết về các khu phố tại địa chỉ:

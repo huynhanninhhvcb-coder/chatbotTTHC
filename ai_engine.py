@@ -28,8 +28,10 @@ OpenAI không khả dụng (mất mạng, sai key, hết quota...), để app.py
 fallback sang một câu trả lời xin lỗi + hướng dẫn liên hệ trực tiếp. Chatbot
 không được phép "sập" chỉ vì AI lỗi.
 """
+import json
 import re
 import time
+from datetime import datetime, timedelta, timezone
 
 from openai import OpenAI
 
@@ -45,8 +47,10 @@ client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 # Lưu ý: effort "minimal" nhanh hơn nữa nhưng OpenAI không cho dùng kèm web_search.
 REASONING_EFFORT = "low"
 # Chỉ tra cứu trong các trang chính thống (đúng các nguồn system prompt yêu
-# cầu) để model không phải lục tìm nhiều vòng trên toàn bộ web.
-ALLOWED_DOMAINS = ["dichvucong.gov.vn", "thuvienphapluat.vn", "chinhphu.vn", "moj.gov.vn"]
+# cầu) để model không phải lục tìm nhiều vòng trên toàn bộ web. Mỗi tên miền
+# tính luôn tên miền con (VD hochiminhcity.gov.vn gồm cả dichvucong.hochiminhcity.gov.vn).
+ALLOWED_DOMAINS = ["dichvucong.gov.vn", "thuvienphapluat.vn", "chinhphu.vn", "moj.gov.vn",
+                   "hochiminhcity.gov.vn", "baohiemxahoi.gov.vn"]
 WEB_SEARCH_TOOL = {
     "type": "web_search",
     "search_context_size": "low",
@@ -109,24 +113,50 @@ def _strip_links_line(line):
     return line.rstrip()
 
 
-def _strip_links(text):
-    return '\n'.join(_strip_links_line(line) for line in text.split('\n')).strip()
+# ==================== GỢI Ý CÂU HỎI TIẾP THEO ====================
+# Model viết thêm một dòng cuối "[GỢI Ý] câu 1 | câu 2 | câu 3" (quy tắc 11 của
+# system prompt). Dòng này KHÔNG hiển thị như văn bản mà được tách riêng, gửi
+# cho trình duyệt sau ký tự SUGGESTIONS_SEPARATOR (ASCII "record separator",
+# không bao giờ có trong văn bản thường) dưới dạng danh sách JSON để hiển thị
+# thành nút bấm. Model không viết dòng này thì đơn giản là không có nút gợi ý.
+SUGGESTIONS_SEPARATOR = '\x1e'
+# Nhận cả "[GỢI Ý]" (đúng định dạng) lẫn dòng mở đầu bằng "Gợi ý:" có dấu "|"
+# (model đôi khi quên ngoặc vuông); câu văn thường kiểu "Gợi ý: bạn nên mang
+# bản chính..." không có "|" nên vẫn hiển thị bình thường.
+_SUGGESTION_MARKER = re.compile(
+    r'\[\s*g[ợo]i\s*[ýy]\s*\]\s*:?|^[\s*_]*g[ợo]i\s*[ýy]\s*[*_]*\s*:(?=.*\|)', re.IGNORECASE)
+MAX_SUGGESTIONS = 3
 
-_WEB_SOURCE_RULE = """ƯU TIÊN TUYỆT ĐỐI tra cứu tại https://dichvucong.gov.vn/ (Cổng Dịch vụ công Quốc gia) trước
+
+def _parse_suggestions(text):
+    items = []
+    for part in re.split(r'[|\n]', text):
+        part = re.sub(r'^\s*(?:[-*•]+|\d+[.)])\s*', '', part)  # gạch đầu dòng / số thứ tự
+        part = _strip_links_line(part).strip(' *_"“”')
+        if part and len(part) <= 80:
+            items.append(part)
+    return items[:MAX_SUGGESTIONS]
+
+
+# Nguồn cho quy định riêng của TP.HCM và BHYT/BHXH - dùng chung cho 2 quy tắc nguồn bên dưới.
+_EXTRA_SOURCES = """Quy định, mức thu riêng của TP. Hồ Chí Minh (VD: lệ phí do HĐND Thành phố quyết định) tra
+   tại hochiminhcity.gov.vn; câu hỏi về BHYT, BHXH tra thêm tại baohiemxahoi.gov.vn."""
+
+_WEB_SOURCE_RULE = f"""ƯU TIÊN TUYỆT ĐỐI tra cứu tại https://dichvucong.gov.vn/ (Cổng Dịch vụ công Quốc gia) trước
    tiên - đây là nguồn chính thống, có cấu trúc đúng 3 mục trên cho từng thủ tục. Chỉ tra cứu thêm
    nguồn khác (thuvienphapluat.vn, chinhphu.vn, congbao.chinhphu.vn) khi dichvucong.gov.vn không
-   có đủ thông tin."""
+   có đủ thông tin. {_EXTRA_SOURCES}"""
 
 # Chỉ dùng khi đã đồng bộ ít nhất 1 tài liệu PDF (xem sync_pdf.py).
-_PDF_SOURCE_RULE = """LUÔN tra cứu TÀI LIỆU NỘI BỘ của phường (công cụ file_search) TRƯỚC TIÊN - đây là văn
+_PDF_SOURCE_RULE = f"""LUÔN tra cứu TÀI LIỆU NỘI BỘ của phường (công cụ file_search) TRƯỚC TIÊN - đây là văn
    bản chính thức do phường cung cấp, là nguồn ưu tiên cao nhất. Chỉ dùng web_search để bổ sung
    phần tài liệu nội bộ không có; khi tra web thì ưu tiên https://dichvucong.gov.vn/ trước, sau đó
-   mới tới thuvienphapluat.vn, chinhphu.vn, congbao.chinhphu.vn.
+   mới tới thuvienphapluat.vn, chinhphu.vn, congbao.chinhphu.vn. {_EXTRA_SOURCES}
    Nếu tài liệu nội bộ và kết quả web MÂU THUẪN nhau, trả lời theo tài liệu nội bộ.
    Không nhắc tên file PDF hay cụm từ "tài liệu nội bộ" trong câu trả lời - chỉ nêu tên/số hiệu
    văn bản khi cần."""
 
-_SYSTEM_PROMPT_TEMPLATE = f"""Bạn là trợ lý ảo AI của Trung tâm phục vụ hành chính công phường Minh Phụng.
+_SYSTEM_PROMPT_TEMPLATE = f"""Bạn là trợ lý ảo AI của Trung tâm phục vụ hành chính công phường Minh Phụng, TP. Hồ Chí Minh.
 
 Bạn CÓ {{tools_desc}}. Khi người dùng hỏi về một thủ tục hành chính nói chung,
 hãy tra cứu rồi trả lời NGẮN GỌN, CHỈ gồm đúng 3 mục sau (bỏ mục nào không tìm được, không thêm
@@ -136,11 +166,24 @@ mục nào khác):
 📋 Thành phần hồ sơ
 ⚖️ Căn cứ pháp lý
 
+BỐI CẢNH CẦN NHỚ:
+- Từ 01/7/2025 chính quyền địa phương chỉ còn 2 cấp: TP. Hồ Chí Minh (cấp tỉnh) và phường/xã
+  (cấp xã), KHÔNG còn cấp quận/huyện. Nhiều trang web viết trước thời điểm này vẫn ghi "UBND
+  quận/huyện": đó là thông tin cũ - không hướng dẫn người dân đến UBND quận/huyện, phải xác định
+  cơ quan có thẩm quyền theo quy định hiện hành.
+- Chỉ áp dụng văn bản còn hiệu lực vào ngày hôm nay (ghi ở cuối hướng dẫn này); văn bản đã hết
+  hiệu lực hoặc đã bị thay thế thì nói rõ và dùng văn bản mới.
+- Trang chatbot có 3 nút trên thanh công cụ: "Tra cứu BHYT" (tra cứu hạn thẻ BHYT trên trang Bảo
+  hiểm xã hội Việt Nam), "Mẫu đơn" (kho mẫu đơn, tờ khai của phường), "Khu phố" (thông tin các khu
+  phố của phường). Khi câu hỏi liên quan, nhắc người dùng bấm đúng nút đó (chỉ nêu tên nút, không
+  ghi link).
+
 QUY TẮC BẮT BUỘC:
 1. {{source_rule}}
 2. ĐI THẲNG VÀO NỘI DUNG: không chào hỏi lại, không lặp lại câu hỏi, không mở đầu dài dòng kiểu
-   "Nếu bạn hỏi về...", không thêm lời khuyên/diễn giải ngoài 3 mục trên. Mỗi mục trình bày bằng
-   gạch đầu dòng thật ngắn, không viết thành đoạn văn dài.
+   "Nếu bạn hỏi về...", không thêm lời khuyên/diễn giải ngoài 3 mục trên (trừ câu hỏi lại ở quy
+   tắc 9 và lời nhắc bấm nút trên thanh công cụ). Mỗi mục trình bày bằng gạch đầu dòng thật ngắn,
+   không viết thành đoạn văn dài.
 3. Mục "Căn cứ pháp lý" phải nêu rõ tên và số hiệu văn bản (luật/nghị định/thông tư/nghị quyết).
    KHÔNG chèn đường link/URL nào vào câu trả lời (kể cả dạng markdown link) - chỉ nêu tên văn bản.
 4. Nếu người dùng hỏi một chi tiết KHÁC ngoài 3 mục trên (lệ phí, thời gian giải quyết, đối tượng
@@ -151,8 +194,20 @@ QUY TẮC BẮT BUỘC:
    chung và khuyên xác minh tại {WARD_OFFICE_ADDRESS}. KHÔNG tự bịa số liệu/quy định của phường.
 6. Nếu người dùng hỏi nơi nộp hồ sơ/liên hệ trực tiếp, cung cấp địa chỉ: {WARD_OFFICE_ADDRESS}.
 7. Câu hỏi không liên quan thủ tục hành chính: từ chối lịch sự bằng 1 câu, không cần tra cứu.
+   Câu hỏi về chính trợ lý (bạn là ai, giúp được gì): giới thiệu ngắn gọn trong 1-2 câu.
 8. Dùng lịch sử hội thoại để hiểu câu hỏi nối tiếp (ví dụ "vậy còn phí thì sao").
-9. Xưng "tôi", gọi người dùng là "bạn".
+9. HỎI LẠI KHI THIẾU THÔNG TIN: nếu thủ tục có các trường hợp khác nhau đáng kể (VD: đăng ký khai
+   sinh đúng hạn hay quá hạn, có yếu tố nước ngoài hay không; đăng ký tạm trú cho bản thân hay cho
+   người thuê trọ) mà câu hỏi chưa cho biết, hãy trả lời cho trường hợp phổ biến nhất rồi kết thúc
+   bằng ĐÚNG MỘT câu hỏi ngắn để xác định trường hợp của người dùng. Nếu câu hỏi quá chung chung,
+   chưa biết là thủ tục nào (VD: "làm giấy tờ cho con"), chỉ hỏi lại ngắn gọn, không đoán.
+10. Xưng "tôi", gọi người dùng là "bạn".
+11. DÒNG GỢI Ý: dòng CUỐI CÙNG của câu trả lời luôn có dạng
+    [GỢI Ý] <câu 1> | <câu 2> | <câu 3>
+    gồm 2-3 câu ngắn (mỗi câu không quá 10 từ) để người dùng bấm hỏi tiếp, viết như lời người hỏi
+    (VD: "Lệ phí bao nhiêu?", "Nộp trực tuyến được không?"), không gợi ý điều vừa trả lời. Nếu vừa
+    hỏi lại người dùng (quy tắc 9), dòng gợi ý là các phương án trả lời cho câu hỏi đó (VD: "Cho
+    bản thân | Cho người thuê trọ"). Không có dòng gợi ý khi từ chối câu hỏi không liên quan.
 """
 
 SYSTEM_PROMPT = _SYSTEM_PROMPT_TEMPLATE.format(
@@ -172,14 +227,21 @@ def _pdf_vector_store_id():
     return index.get('vector_store_id') if index.get('files') else None
 
 
+def _today():
+    # Giờ Việt Nam (UTC+7, không có giờ mùa hè) - server Render chạy theo giờ UTC.
+    return datetime.now(timezone(timedelta(hours=7))).strftime('%d/%m/%Y')
+
+
 def stream_answer(question, history=None):
     """
     Gọi GPT (kèm công cụ tra cứu web) để trả lời câu hỏi, ưu tiên căn cứ vào
     nguồn thật tìm được trên web thay vì chỉ dựa vào kiến thức sẵn có của
     model. Là generator: trả dần câu trả lời theo TỪNG DÒNG ngay khi model
     viết xong dòng đó, để người dùng thấy chữ sớm hơn ~2-3s so với chờ trọn
-    câu trả lời. Không yield gì nếu OpenAI không khả dụng/lỗi ngay từ đầu, để
-    app.py tự fallback sang câu trả lời xin lỗi + hướng dẫn liên hệ trực tiếp.
+    câu trả lời. Phần tử cuối (nếu có) bắt đầu bằng SUGGESTIONS_SEPARATOR, theo
+    sau là danh sách câu hỏi gợi ý dạng JSON. Không yield gì nếu OpenAI không
+    khả dụng/lỗi ngay từ đầu, để app.py tự fallback sang câu trả lời xin lỗi +
+    hướng dẫn liên hệ trực tiếp.
     """
     if not client:
         return
@@ -195,14 +257,35 @@ def stream_answer(question, history=None):
     if cache_key:
         cached = _cache_get(cache_key)
         if cached:
-            yield cached
+            answer, suggestions = cached
+            yield answer
+            if suggestions:
+                yield SUGGESTIONS_SEPARATOR + json.dumps(suggestions, ensure_ascii=False)
             return
 
-    messages = [{"role": "system", "content": system_prompt}]
+    # Ngày hiện tại đặt CUỐI system prompt để phần đầu (giống hệt nhau ở mọi
+    # lần gọi) vẫn được OpenAI cache lại, giúp phản hồi nhanh và rẻ hơn.
+    messages = [{"role": "system", "content": f"{system_prompt}\nHôm nay là ngày {_today()}."}]
     messages.extend(history or [])
     messages.append({"role": "user", "content": question})
 
-    raw = ''
+    shown = []               # các dòng đã gửi cho người dùng
+    suggestion_lines = None  # các dòng từ dấu [GỢI Ý] trở đi (không hiển thị)
+
+    def take_line(line):
+        """Dòng cần hiển thị (đã lọc link), hoặc None nếu dòng thuộc phần gợi ý."""
+        nonlocal suggestion_lines
+        if suggestion_lines is not None:
+            suggestion_lines.append(line)
+            return None
+        marker = _SUGGESTION_MARKER.search(line)
+        if marker:
+            suggestion_lines = [line[marker.end():]]
+            line = line[:marker.start()]
+            if not line.strip():
+                return None
+        return _strip_links_line(line)
+
     pending = ''  # phần dòng đang viết dở, chưa lọc link được
     completed = False
     try:
@@ -215,21 +298,28 @@ def stream_answer(question, history=None):
         )
         for event in stream:
             if event.type == "response.output_text.delta":
-                raw += event.delta
                 pending += event.delta
                 *lines, pending = pending.split('\n')
                 for line in lines:
-                    yield _strip_links_line(line) + '\n'
+                    text = take_line(line)
+                    if text is not None:
+                        shown.append(text)
+                        yield text + '\n'
             elif event.type == "response.completed":
                 completed = True
-        if pending:
-            yield _strip_links_line(pending)
+        text = take_line(pending) if pending else None
+        if text is not None:
+            shown.append(text)
+            yield text
     except Exception as e:
         print(f"⚠️ Lỗi gọi OpenAI Responses API: {e}")
-        if '\n' in raw:  # đã gửi ít nhất 1 dòng câu trả lời cho người dùng
+        if shown:  # đã gửi ít nhất 1 dòng câu trả lời cho người dùng
             yield '\n\n⚠️ Câu trả lời bị gián đoạn, bạn vui lòng hỏi lại.'
         return
 
-    answer = _strip_links(raw)
+    suggestions = _parse_suggestions('\n'.join(suggestion_lines or []))
+    if suggestions:
+        yield SUGGESTIONS_SEPARATOR + json.dumps(suggestions, ensure_ascii=False)
+    answer = '\n'.join(shown).strip()
     if cache_key and answer and completed:
-        _cache_set(cache_key, answer)
+        _cache_set(cache_key, (answer, suggestions))

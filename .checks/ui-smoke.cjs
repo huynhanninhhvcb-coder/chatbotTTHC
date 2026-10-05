@@ -355,6 +355,26 @@ async function verifyLongConversation() {
     } finally {await closePage(cdp);}
 }
 
+async function verifySuggestions() {
+    const cdp = await createPage({mockSpeech:true});
+    try {
+        const reply = 'Trả lời mẫu có gợi ý.' + '\x1e' + JSON.stringify(['Lệ phí bao nhiêu?', 'Nộp ở đâu?']);
+        await cdp.evaluate(`window.__mockReply=${JSON.stringify(reply)};window.__mockDelay=10;document.getElementById('textInput').value='Thủ tục khai sinh';document.getElementById('textInput').dispatchEvent(new Event('input',{bubbles:true}));document.getElementById('sendTextBtn').click()`);
+        await poll(() => cdp.evaluate(`[...document.querySelectorAll('#chatMessages .chip-btn')].filter(b=>!b.disabled).length===2`), 'suggestion chips enabled');
+        let state = await cdp.evaluate(`(() => {const bot=[...document.querySelectorAll('#chatMessages .message.bot')].pop();return {text:bot.querySelector('.message-content').textContent,chips:[...bot.querySelectorAll('.chip-btn')].map(b=>b.textContent),chipsBeforeTime:bot.querySelector('.quick-replies').nextElementSibling?.className};})()`);
+        assert(state.text.includes('Trả lời mẫu có gợi ý.') && !state.text.includes('\x1e') && !state.text.includes('Lệ phí'), `Suggestions must not leak into answer text: ${JSON.stringify(state)}`);
+        assert.deepEqual(state.chips, ['Lệ phí bao nhiêu?', 'Nộp ở đâu?']);
+        assert.equal(state.chipsBeforeTime, 'timestamp', 'Chips should sit between answer and timestamp');
+        await capture(cdp, 'suggestions-mobile.png');
+        await cdp.evaluate(`window.__mockReply='Lệ phí mẫu.';document.querySelector('#chatMessages .chip-btn').click()`);
+        await poll(() => cdp.evaluate(`window.__speechMock.calls.requests.length===2 && document.querySelectorAll('#chatMessages .message.user').length===2 && !document.getElementById('typingIndicator')`), 'suggestion chip sends question');
+        state = await cdp.evaluate(`window.__speechMock.calls.requests[1]`);
+        assert.equal(state.message, 'Lệ phí bao nhiêu?', 'Chip should send its own text');
+        assert.deepEqual(state.history, [{role:'user',content:'Thủ tục khai sinh'},{role:'assistant',content:'Trả lời mẫu có gợi ý.'}], 'Follow-up should carry history without suggestions');
+        record('suggestion chips render after answer and send follow-up with history');
+    } finally {await closePage(cdp);}
+}
+
 async function verifyAnimations() {
     const cdp = await createPage({mockSpeech:true,reducedMotion:false});
     try {
@@ -434,6 +454,7 @@ async function main() {
         await verifyInteraction();
         await verifyVoice();
         await verifyLongConversation();
+        await verifySuggestions();
         await verifyAnimations();
         fs.writeFileSync(path.join(CHECKS_DIR, 'ui-smoke-results.json'), JSON.stringify({ ok: true, results }, null, 2));
         console.log(`Completed ${results.length} checks. Screenshots: .checks/mobile.png, .checks/desktop.png, .checks/conversation-mobile.png and .checks/listening-mobile.png`);

@@ -178,6 +178,10 @@
       }
     },
     {
+      "name": "suggestion chips render after answer and send follow-up with history",
+      "ok": true
+    },
+    {
       "name": "normal motion entrance settles with visible voice invitation",
       "ok": true,
       "detail": [
