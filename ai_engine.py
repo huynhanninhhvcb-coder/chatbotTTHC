@@ -23,7 +23,7 @@ thutuc_data/, đồng bộ bằng sync_pdf.py lên vector store của OpenAI), t
 bằng công cụ file_search. Khi đã có tài liệu, AI ưu tiên PDF trước, chỉ tra
 cứu web để bổ sung phần PDF không có; mâu thuẫn thì theo PDF.
 
-Nguyên tắc quan trọng: generate_answer() PHẢI tự bắt lỗi và trả về None khi
+Nguyên tắc quan trọng: stream_answer() PHẢI tự bắt lỗi và không trả về gì khi
 OpenAI không khả dụng (mất mạng, sai key, hết quota...), để app.py có thể
 fallback sang một câu trả lời xin lỗi + hướng dẫn liên hệ trực tiếp. Chatbot
 không được phép "sập" chỉ vì AI lỗi.
@@ -57,8 +57,9 @@ WEB_SEARCH_TOOL = {
 # Bộ nhớ đệm câu trả lời: người dân thường hỏi lặp lại cùng một thủ tục (khai
 # sinh, tạm trú...), nên câu hỏi giống hệt sẽ trả lời ngay thay vì gọi lại AI.
 # Chỉ áp dụng cho câu hỏi ĐẦU TIÊN (không có lịch sử), vì câu hỏi nối tiếp
-# kiểu "vậy còn phí thì sao" phụ thuộc ngữ cảnh. Lưu trong RAM của từng tiến
-# trình server, mất khi server khởi động lại - chấp nhận được.
+# kiểu "vậy còn phí thì sao" phụ thuộc ngữ cảnh. Lưu trong RAM của tiến
+# trình server (gunicorn chạy 1 worker nên mọi người dùng chung một bộ đệm),
+# mất khi server khởi động lại - chấp nhận được.
 CACHE_TTL_SECONDS = 24 * 3600
 CACHE_MAX_ITEMS = 500
 _answer_cache = {}
@@ -66,7 +67,9 @@ _answer_cache = {}
 
 def _cache_key(question, vs_id):
     # Gắn kèm vs_id để khi đồng bộ tài liệu PDF mới thì không dùng lại câu trả lời cũ.
-    return (vs_id, ' '.join(question.lower().split()))
+    # Bỏ khác biệt hoa/thường, khoảng trắng thừa và dấu câu cuối câu để
+    # "Thủ tục khai sinh?" và "thủ tục khai sinh" dùng chung một câu trả lời.
+    return (vs_id, ' '.join(question.lower().split()).rstrip(' ?.!'))
 
 
 def _cache_get(key):
@@ -94,15 +97,20 @@ _EMPTY_PARENS = re.compile(r'\(\s*\)')
 _FILE_CITATION = re.compile(r'【[^】]*】')
 
 
+def _strip_links_line(line):
+    # Lọc theo TỪNG DÒNG để dùng được khi stream: link/trích dẫn không bao giờ
+    # nằm vắt qua 2 dòng, nên lọc xong dòng nào gửi ngay dòng đó cho người dùng.
+    line = _FILE_CITATION.sub('', line)
+    line = _MARKDOWN_LINK_IN_PARENS.sub('', line)
+    line = _MARKDOWN_LINK.sub('', line)
+    line = _BARE_URL.sub('', line)
+    line = _EMPTY_PARENS.sub('', line)
+    line = re.sub(r'[ \t]{2,}', ' ', line)
+    return line.rstrip()
+
+
 def _strip_links(text):
-    text = _FILE_CITATION.sub('', text)
-    text = _MARKDOWN_LINK_IN_PARENS.sub('', text)
-    text = _MARKDOWN_LINK.sub('', text)
-    text = _BARE_URL.sub('', text)
-    text = _EMPTY_PARENS.sub('', text)
-    text = re.sub(r'[ \t]{2,}', ' ', text)
-    text = re.sub(r' +\n', '\n', text)
-    return text.strip()
+    return '\n'.join(_strip_links_line(line) for line in text.split('\n')).strip()
 
 _WEB_SOURCE_RULE = """ƯU TIÊN TUYỆT ĐỐI tra cứu tại https://dichvucong.gov.vn/ (Cổng Dịch vụ công Quốc gia) trước
    tiên - đây là nguồn chính thống, có cấu trúc đúng 3 mục trên cho từng thủ tục. Chỉ tra cứu thêm
@@ -164,15 +172,17 @@ def _pdf_vector_store_id():
     return index.get('vector_store_id') if index.get('files') else None
 
 
-def generate_answer(question, history=None):
+def stream_answer(question, history=None):
     """
     Gọi GPT (kèm công cụ tra cứu web) để trả lời câu hỏi, ưu tiên căn cứ vào
     nguồn thật tìm được trên web thay vì chỉ dựa vào kiến thức sẵn có của
-    model. Trả về None nếu OpenAI không khả dụng/lỗi, để app.py tự fallback
-    sang câu trả lời xin lỗi + hướng dẫn liên hệ trực tiếp.
+    model. Là generator: trả dần câu trả lời theo TỪNG DÒNG ngay khi model
+    viết xong dòng đó, để người dùng thấy chữ sớm hơn ~2-3s so với chờ trọn
+    câu trả lời. Không yield gì nếu OpenAI không khả dụng/lỗi ngay từ đầu, để
+    app.py tự fallback sang câu trả lời xin lỗi + hướng dẫn liên hệ trực tiếp.
     """
     if not client:
-        return None
+        return
 
     tools = [WEB_SEARCH_TOOL]
     system_prompt = SYSTEM_PROMPT
@@ -185,23 +195,41 @@ def generate_answer(question, history=None):
     if cache_key:
         cached = _cache_get(cache_key)
         if cached:
-            return cached
+            yield cached
+            return
 
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(history or [])
     messages.append({"role": "user", "content": question})
 
+    raw = ''
+    pending = ''  # phần dòng đang viết dở, chưa lọc link được
+    completed = False
     try:
-        resp = client.responses.create(
+        stream = client.responses.create(
             model=CHAT_MODEL,
             reasoning={"effort": REASONING_EFFORT},
             tools=tools,
             input=messages,
+            stream=True,
         )
-        answer = _strip_links(resp.output_text)
-        if cache_key and answer:
-            _cache_set(cache_key, answer)
-        return answer
+        for event in stream:
+            if event.type == "response.output_text.delta":
+                raw += event.delta
+                pending += event.delta
+                *lines, pending = pending.split('\n')
+                for line in lines:
+                    yield _strip_links_line(line) + '\n'
+            elif event.type == "response.completed":
+                completed = True
+        if pending:
+            yield _strip_links_line(pending)
     except Exception as e:
         print(f"⚠️ Lỗi gọi OpenAI Responses API: {e}")
-        return None
+        if '\n' in raw:  # đã gửi ít nhất 1 dòng câu trả lời cho người dùng
+            yield '\n\n⚠️ Câu trả lời bị gián đoạn, bạn vui lòng hỏi lại.'
+        return
+
+    answer = _strip_links(raw)
+    if cache_key and answer and completed:
+        _cache_set(cache_key, answer)

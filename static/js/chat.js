@@ -25,10 +25,10 @@ let activity = "ready";
 let isRequestPending = false;
 let isClearing = false;
 let activeRequest = null;
-let cancelReveal = null;
 let conversationVersion = 0;
-let contextResetRequired = false;
-let contextResetPromise = null;
+// Lịch sử hỏi-đáp gần nhất, gửi kèm mỗi câu hỏi để AI hiểu câu hỏi nối tiếp.
+const MAX_HISTORY_MESSAGES = 6;
+let chatHistory = [];
 
 function escapeHtml(value) {
   return String(value ?? "").replace(
@@ -333,35 +333,6 @@ function hideTypingIndicator() {
   document.getElementById("typingIndicator")?.remove();
 }
 
-function revealText(element, fullText, version) {
-  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-    element.innerHTML = formatMessage(fullText);
-    scrollToLatest();
-    return Promise.resolve(true);
-  }
-  const words = fullText.split(" ");
-  let index = 0;
-  let timer = null;
-  return new Promise((resolve) => {
-    const finish = (completed) => {
-      clearTimeout(timer);
-      if (cancelReveal === cancel) cancelReveal = null;
-      resolve(completed);
-    };
-    const cancel = () => finish(false);
-    cancelReveal = cancel;
-    function tick() {
-      if (version !== conversationVersion) return finish(false);
-      index = Math.min(words.length, index + 5);
-      element.innerHTML = formatMessage(words.slice(0, index).join(" "));
-      scrollToLatest();
-      if (index < words.length) timer = setTimeout(tick, 24);
-      else finish(true);
-    }
-    tick();
-  });
-}
-
 function stopSpeaking() {
   const wasSpeaking = activity === "speaking";
   currentUtterance = null;
@@ -449,20 +420,6 @@ function stopRecognition(discard = true) {
   }
 }
 
-async function ensureContextReset() {
-  if (!contextResetRequired) return;
-  if (!contextResetPromise) {
-    contextResetPromise = (async () => {
-      const response = await fetch("/clear-context", { method: "POST" });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      contextResetRequired = false;
-    })().finally(() => {
-      contextResetPromise = null;
-    });
-  }
-  await contextResetPromise;
-}
-
 async function sendMessage(message, { fromVoice = false } = {}) {
   const question = String(message || "").trim();
   if (!question || isRequestPending || isClearing) return false;
@@ -477,30 +434,46 @@ async function sendMessage(message, { fromVoice = false } = {}) {
   renderMessage({ content: question, isUser: true });
   showTypingIndicator();
   try {
-    await ensureContextReset();
-    if (version !== conversationVersion) return false;
     const response = await fetch("/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: question }),
+      body: JSON.stringify({ message: question, history: chatHistory }),
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
-    if (version !== conversationVersion) return false;
-    if (typeof data.reply !== "string")
-      throw new Error("Câu trả lời không hợp lệ");
-    hideTypingIndicator();
-    const contentElement = renderMessage({
-      content: "",
-      suggestions: data.suggestions,
-    });
-    const revealed = await revealText(contentElement, data.reply, version);
-    if (!revealed || version !== conversationVersion) return false;
+    // Câu trả lời được stream theo từng dòng: hiện ngay dòng nào tới trước,
+    // không chờ AI viết xong cả câu trả lời.
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let reply = "";
+    let contentElement = null;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (version !== conversationVersion) return false;
+      if (done) break;
+      reply += decoder.decode(value, { stream: true });
+      if (!contentElement) {
+        hideTypingIndicator();
+        contentElement = renderMessage({ content: "" });
+      }
+      contentElement.innerHTML = formatMessage(reply);
+      scrollToLatest();
+    }
+    reply = (reply + decoder.decode()).trim();
+    if (!reply) throw new Error("Câu trả lời rỗng");
+    contentElement.innerHTML = formatMessage(reply);
+    const context = response.headers.get("X-Context");
+    if (context === "reset") chatHistory = [];
+    else if (context === "append")
+      chatHistory = [
+        ...chatHistory,
+        { role: "user", content: question },
+        { role: "assistant", content: reply },
+      ].slice(-MAX_HISTORY_MESSAGES);
     isRequestPending = false;
     updateControls();
-    if (!data.reply.includes("Xin chào") && !data.reply.includes("Tạm biệt"))
-      speak(data.reply);
+    if (!reply.includes("Xin chào") && !reply.includes("Tạm biệt"))
+      speak(reply);
     else setState("ready");
     return true;
   } catch (error) {
@@ -525,32 +498,23 @@ async function sendMessage(message, { fromVoice = false } = {}) {
   }
 }
 
-async function clearConversation() {
+function clearConversation() {
   if (isClearing) return;
   isClearing = true;
   conversationVersion += 1;
   activeRequest?.abort();
   activeRequest = null;
-  cancelReveal?.();
   stopRecognition();
   stopSpeaking();
   isRequestPending = false;
-  contextResetRequired = true;
+  chatHistory = [];
   textInput.value = "";
   hideTranscript();
   resetToWelcome();
+  setState("ready");
+  isClearing = false;
   updateControls();
-  setState("processing", "Đang bắt đầu cuộc trò chuyện mới…");
-  try {
-    await ensureContextReset();
-    setState("ready");
-  } catch (error) {
-    setState("error", "Chưa thể làm mới. Hãy kiểm tra kết nối mạng.");
-  } finally {
-    isClearing = false;
-    updateControls();
-    textInput.focus();
-  }
+  textInput.focus();
 }
 
 function showTranscript(text, final = false) {

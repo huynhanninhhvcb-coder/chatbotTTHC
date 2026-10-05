@@ -111,9 +111,16 @@ def main():
         with open(os.path.join(PDF_DIR, name), 'rb') as f:
             vs_file = client.vector_stores.files.upload_and_poll(
                 vector_store_id=vs_id, file=f, attributes={'ten_file': name[:512]})
+        # PDF dạng ảnh scan (không có lớp chữ) vẫn báo "completed" nhưng không
+        # trích được chữ nào (usage_bytes = 0) - giữ lại chỉ làm file_search chạy
+        # vô ích, tốn thêm vài giây mỗi câu hỏi, nên coi là lỗi.
+        if vs_file.status == 'completed' and not vs_file.usage_bytes:
+            vs_file.status = 'no_text'
         if vs_file.status != 'completed':
-            # VD: PDF dạng ảnh scan không có lớp chữ -> OpenAI không đọc được nội dung.
-            reason = vs_file.last_error.message if vs_file.last_error else vs_file.status
+            if vs_file.status == 'no_text':
+                reason = "PDF dạng ảnh scan, không có lớp chữ - cần chuyển sang PDF có chữ (OCR) trước"
+            else:
+                reason = vs_file.last_error.message if vs_file.last_error else vs_file.status
             _remove_remote(client, vs_id, vs_file.id)
             failed.append((name, reason))
             print(f"❌ Lỗi xử lý: {name} - {reason}")

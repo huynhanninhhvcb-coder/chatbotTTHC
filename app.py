@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, Response, render_template, request
 import requests
 
 from config import (
@@ -11,23 +11,34 @@ import ai_engine
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
-# Số lượt hỏi-đáp gần nhất giữ lại trong session làm ngữ cảnh cho AI, giúp
-# hiểu được câu hỏi nối tiếp (VD: "vậy còn phí thì sao") mà không cần người
-# dùng nhắc lại tên thủ tục. Giới hạn độ dài để session (cookie) không phình to.
+# Số lượt hỏi-đáp gần nhất dùng làm ngữ cảnh cho AI, giúp hiểu được câu hỏi
+# nối tiếp (VD: "vậy còn phí thì sao") mà không cần người dùng nhắc lại tên
+# thủ tục. Lịch sử do TRÌNH DUYỆT giữ và gửi kèm mỗi câu hỏi (không lưu trong
+# session/cookie được nữa vì câu trả lời được stream: cookie đã gửi đi trước
+# khi có câu trả lời). Server chỉ nhận đúng định dạng và cắt bớt độ dài.
 MAX_HISTORY_MESSAGES = 6
 MAX_HISTORY_CHARS = 600
 
 
-def _push_history(cau_hoi, reply):
-    history = session.get('history', [])
-    history.append({'role': 'user', 'content': cau_hoi[:MAX_HISTORY_CHARS]})
-    history.append({'role': 'assistant', 'content': reply[:MAX_HISTORY_CHARS]})
-    del history[:-MAX_HISTORY_MESSAGES]
-    session['history'] = history
+def _clean_history(raw):
+    if not isinstance(raw, list):
+        return []
+    history = [{'role': m['role'], 'content': m['content'][:MAX_HISTORY_CHARS]}
+               for m in raw
+               if isinstance(m, dict) and m.get('role') in ('user', 'assistant')
+               and isinstance(m.get('content'), str)]
+    return history[-MAX_HISTORY_MESSAGES:]
 
 
-def _reset_context():
-    session.pop('history', None)
+def _reply(text, context=None):
+    """
+    Trả câu trả lời dạng văn bản thuần. Header X-Context báo trình duyệt xử lý
+    lịch sử hội thoại: "reset" = xóa ngữ cảnh, "append" = lưu lượt hỏi-đáp này.
+    """
+    resp = Response(text, mimetype='text/plain')
+    if context:
+        resp.headers['X-Context'] = context
+    return resp
 
 
 @app.route('/')
@@ -40,20 +51,18 @@ def chat():
     data = request.get_json(silent=True) or {}
     cau_hoi = str(data.get('message', '')).strip()
     if not cau_hoi:
-        return jsonify({'reply': 'Xin lỗi, tôi không nghe rõ. Bạn vui lòng nói lại nhé! 🎤'})
+        return _reply('Xin lỗi, tôi không nghe rõ. Bạn vui lòng nói lại nhé! 🎤')
     cau_hoi_chuan = chuan_hoa_tim_kiem(cau_hoi)
 
     # ===== TỪ KHÓA ĐẶC BIỆT =====
     # Các nhánh này xử lý trực tiếp bằng quy tắc (không gọi AI) để đảm bảo
     # luôn đúng 100% và không tốn chi phí cho những câu hỏi đơn giản, cố định.
     if co_tu_khoa(cau_hoi_chuan, ['chao', 'hi', 'hello']):
-        _reset_context()
-        return jsonify({'reply': 'Xin chào! Tôi có thể giúp gì cho bạn hôm nay? Hãy hỏi tôi về các thủ tục hành chính công nhé! 🎤'})
+        return _reply('Xin chào! Tôi có thể giúp gì cho bạn hôm nay? Hãy hỏi tôi về các thủ tục hành chính công nhé! 🎤', 'reset')
     if co_tu_khoa(cau_hoi_chuan, ['cam on', 'thank']):
-        return jsonify({'reply': 'Dạ không có gì ạ! Rất vui được hỗ trợ bạn.'})
+        return _reply('Dạ không có gì ạ! Rất vui được hỗ trợ bạn.')
     if co_tu_khoa(cau_hoi_chuan, ['tam biet', 'bye', 'thoat']):
-        _reset_context()
-        return jsonify({'reply': 'Tạm biệt! Chúc bạn một ngày tốt lành! 👋'})
+        return _reply('Tạm biệt! Chúc bạn một ngày tốt lành! 👋', 'reset')
 
     # BHYT
     if co_tu_khoa(cau_hoi_chuan, ['bhyt', 'bao hiem y te', 'tra cuu bhyt']):
@@ -69,7 +78,7 @@ Bạn vui lòng truy cập trực tiếp vào trang web của Bảo hiểm xã h
 3. Bấm "Tra cứu" để xem kết quả
 
 💡 *Lưu ý: Trang web này do Bảo hiểm xã hội Việt Nam quản lý.*"""
-        return jsonify({'reply': reply})
+        return _reply(reply)
 
     # Mẫu đơn (giữ từ khóa cụ thể để không nhầm với câu hỏi "cần giấy tờ gì" của một thủ tục)
     if co_tu_khoa(cau_hoi_chuan, ['mau don', 'bieu mau', 'mau giay', 'mau khai', 'to khai', 'kho mau']):
@@ -80,7 +89,7 @@ Tôi đã chuẩn bị sẵn một kho lưu trữ các mẫu đơn, tờ khai h�
 🔗 **Hoặc truy cập trực tiếp:** https://drive.google.com/drive/folders/1p2B1TfURTU7iTD_iY9mMk5TWGOoNZ7Xf
 
 💡 *Lưu ý: Bạn cần đăng nhập Google để xem và tải file.*"""
-        return jsonify({'reply': reply})
+        return _reply(reply)
 
     # Khu phố
     if co_tu_khoa(cau_hoi_chuan, ['khu pho', 'thong tin khu pho', 'tra cuu khu pho']):
@@ -97,28 +106,30 @@ https://sites.google.com/view/phuongminhphung/trang-ch%E1%BB%A7
 3. Xem chi tiết thông tin hành chính
 
 💡 *Trang thông tin này cung cấp dữ liệu chính thống về các khu phố của phường Minh Phụng.*"""
-        return jsonify({'reply': reply})
+        return _reply(reply)
 
     # ===== CHATBOT AI: trả lời bằng kiến thức chung (không còn dữ liệu riêng) =====
-    history = session.get('history', [])
-    ai_reply = ai_engine.generate_answer(cau_hoi, history)
-    if ai_reply:
-        _push_history(cau_hoi, ai_reply)
-        return jsonify({'reply': ai_reply})
+    # Chờ dòng ĐẦU TIÊN rồi mới trả response: lúc đó mới biết AI có hoạt động
+    # không, để chọn giữa stream câu trả lời hay câu trả lời dự phòng. Các dòng
+    # sau được stream tới trình duyệt ngay khi AI viết xong từng dòng.
+    answer = ai_engine.stream_answer(cau_hoi, _clean_history(data.get('history')))
+    first = next(answer, None)
+    if first is not None:
+        def body():
+            yield first
+            yield from answer
+        resp = Response(body(), mimetype='text/plain')
+        resp.headers['X-Context'] = 'append'
+        # Báo proxy (Render/Nginx) không gom cả câu trả lời rồi mới gửi.
+        resp.headers['X-Accel-Buffering'] = 'no'
+        resp.headers['Cache-Control'] = 'no-cache'
+        return resp
 
     # ===== DỰ PHÒNG: chỉ chạy khi OpenAI không khả dụng (mất mạng, hết
     # quota, chưa cấu hình key...) để chatbot vẫn phản hồi được =====
-    reply = (f'❌ Xin lỗi, hệ thống AI đang tạm thời không khả dụng nên tôi chưa thể trả lời câu '
-             f'hỏi này.\n\n💡 Bạn vui lòng thử lại sau ít phút, hoặc liên hệ trực tiếp tại '
-             f'{WARD_OFFICE_ADDRESS} để được hỗ trợ ngay.')
-    return jsonify({'reply': reply})
-
-
-@app.route('/clear-context', methods=['POST'])
-def clear_context():
-    """Xóa lịch sử hội thoại khi người dùng bấm 'Xóa hội thoại'"""
-    _reset_context()
-    return jsonify({'ok': True})
+    return _reply(f'❌ Xin lỗi, hệ thống AI đang tạm thời không khả dụng nên tôi chưa thể trả lời câu '
+                  f'hỏi này.\n\n💡 Bạn vui lòng thử lại sau ít phút, hoặc liên hệ trực tiếp tại '
+                  f'{WARD_OFFICE_ADDRESS} để được hỗ trợ ngay.')
 
 
 @app.route('/mau-don')

@@ -95,7 +95,7 @@ const MOCK_RECOGNITION = `(() => {
     window.fetch = (input, options) => {
         if (String(input).endsWith('/chat')) {
             calls.requests.push(JSON.parse(options.body));
-            return new Promise(resolve => setTimeout(() => resolve(new Response(JSON.stringify({reply:window.__mockReply || 'Đã nhận câu hỏi bằng giọng nói.'}), {status:200, headers:{'Content-Type':'application/json'}})), window.__mockDelay ?? 1100));
+            return new Promise(resolve => setTimeout(() => resolve(new Response(window.__mockReply || 'Đã nhận câu hỏi bằng giọng nói.', {status:200, headers:{'Content-Type':'text/plain; charset=utf-8', 'X-Context':'append'}})), window.__mockDelay ?? 1100));
         }
         return realFetch(input, options);
     };
