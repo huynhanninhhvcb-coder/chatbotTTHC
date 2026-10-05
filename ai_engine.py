@@ -19,8 +19,9 @@ cụ thể...) mà tra cứu web cũng không chắc chắn, AI vẫn phải khu
 xác minh trực tiếp tại nơi tiếp nhận thay vì khẳng định bừa.
 
 Nguồn tra cứu thứ hai: tài liệu PDF do phường tự tải lên (thư mục
-thutuc_data/, đồng bộ bằng sync_pdf.py lên vector store của OpenAI), tra cứu
-bằng công cụ file_search. Khi đã có tài liệu, AI ưu tiên PDF trước, chỉ tra
+thutuc_data/, đồng bộ bằng sync_pdf.py lên vector store của OpenAI). Code tự
+tra vector store rồi đưa trích đoạn liên quan vào prompt (không dùng công cụ
+file_search - xem _pdf_excerpts). AI ưu tiên trích đoạn PDF trước, chỉ tra
 cứu web để bổ sung phần PDF không có; mâu thuẫn thì theo PDF.
 
 Nguyên tắc quan trọng: stream_answer() PHẢI tự bắt lỗi và không trả về gì khi
@@ -97,8 +98,15 @@ _MARKDOWN_LINK_IN_PARENS = re.compile(r'\s*\(\[[^\]]+\]\(https?://[^)\s]+\)\)')
 _MARKDOWN_LINK = re.compile(r'\s*\[[^\]]+\]\(https?://[^)\s]+\)')
 _BARE_URL = re.compile(r'\s*https?://\S+')
 _EMPTY_PARENS = re.compile(r'\(\s*\)')
-# Dấu trích dẫn kiểu "【4:0†ten_file.pdf】" mà model đôi khi chèn khi dùng file_search.
-_FILE_CITATION = re.compile(r'【[^】]*】')
+# Dấu trích dẫn tệp mà model có thể chèn: kiểu cũ "【4:0†ten_file.pdf】" và kiểu
+# mới bọc trong ký tự vùng riêng Unicode U+E200..U+E202 (đã gặp thực tế: lọt ra
+# màn hình thành "fileciteturn1file2turn1file5"). Lọc cả trường hợp thiếu ký tự
+# đóng và ký tự vùng riêng còn sót lại.
+_FILE_CITATION = re.compile(
+    r'【[^】]*】'
+    r'|\ue200[^\ue201]*\ue201'
+    r'|[\ue000-\uf8ff]*(?:file)?cite(?:[\ue000-\uf8ff]*turn\d+[a-z]+\d+)+[\ue000-\uf8ff]*'
+    r'|[\ue000-\uf8ff]')
 
 
 def _strip_links_line(line):
@@ -147,11 +155,12 @@ _WEB_SOURCE_RULE = f"""ƯU TIÊN TUYỆT ĐỐI tra cứu tại https://dichvuco
    nguồn khác (thuvienphapluat.vn, chinhphu.vn, congbao.chinhphu.vn) khi dichvucong.gov.vn không
    có đủ thông tin. {_EXTRA_SOURCES}"""
 
-# Chỉ dùng khi đã đồng bộ ít nhất 1 tài liệu PDF (xem sync_pdf.py).
-_PDF_SOURCE_RULE = f"""LUÔN tra cứu TÀI LIỆU NỘI BỘ của phường (công cụ file_search) TRƯỚC TIÊN - đây là văn
-   bản chính thức do phường cung cấp, là nguồn ưu tiên cao nhất. Chỉ dùng web_search để bổ sung
-   phần tài liệu nội bộ không có; khi tra web thì ưu tiên https://dichvucong.gov.vn/ trước, sau đó
-   mới tới thuvienphapluat.vn, chinhphu.vn, congbao.chinhphu.vn. {_EXTRA_SOURCES}
+# Chỉ dùng khi tra được trích đoạn PDF liên quan tới câu hỏi (xem _pdf_excerpts).
+_PDF_SOURCE_RULE = f"""TRÍCH ĐOẠN TÀI LIỆU NỘI BỘ của phường (ở cuối hướng dẫn này) là văn bản chính thức do
+   phường cung cấp, là nguồn ưu tiên cao nhất - nhưng có thể không liên quan tới câu hỏi, khi đó bỏ
+   qua. Nếu trích đoạn đã đủ để trả lời thì trả lời theo trích đoạn, không cần tra web. Chỉ dùng
+   web_search để bổ sung phần trích đoạn không có; khi tra web thì ưu tiên https://dichvucong.gov.vn/
+   trước, sau đó mới tới thuvienphapluat.vn, chinhphu.vn, congbao.chinhphu.vn. {_EXTRA_SOURCES}
    Nếu tài liệu nội bộ và kết quả web MÂU THUẪN nhau, trả lời theo tài liệu nội bộ.
    Không nhắc tên file PDF hay cụm từ "tài liệu nội bộ" trong câu trả lời - chỉ nêu tên/số hiệu
    văn bản khi cần."""
@@ -213,8 +222,22 @@ QUY TẮC BẮT BUỘC:
 SYSTEM_PROMPT = _SYSTEM_PROMPT_TEMPLATE.format(
     tools_desc="công cụ tra cứu web (web_search)", source_rule=_WEB_SOURCE_RULE)
 SYSTEM_PROMPT_WITH_PDF = _SYSTEM_PROMPT_TEMPLATE.format(
-    tools_desc="2 công cụ tra cứu: tài liệu nội bộ của phường (file_search) và web (web_search)",
+    tools_desc="trích đoạn tài liệu nội bộ của phường (ở cuối hướng dẫn này) và công cụ tra cứu web (web_search)",
     source_rule=_PDF_SOURCE_RULE)
+
+# ==================== TÀI LIỆU PDF NỘI BỘ ====================
+# Code tự tra kho PDF rồi đưa trích đoạn vào prompt, THAY VÌ cho model dùng công
+# cụ file_search: với file_search, OpenAI tự gỡ dấu trích dẫn tệp khỏi câu trả
+# lời và đã có lúc (gặp thực tế 10/2026) làm mất luôn vài chữ ngay sau chỗ trích
+# dẫn ("...mỗi học kỳ. ể được miễn...", "Nghị định Chính phủ" mất số hiệu) hoặc
+# để lọt dấu trích dẫn ra màn hình. Không có file_search thì model không trích
+# dẫn tệp nữa nên hết lỗi này.
+PDF_MAX_RESULTS = 5
+# Đo thực tế: câu liên quan tới 2 nghị định đạt ~0.7-0.9; câu không liên quan
+# (BHYT, chứng thực) ~0.5-0.57. Câu như "khai sinh" vẫn đạt ~0.79 vì nghị định
+# có nhắc giấy khai sinh trong hồ sơ - nên prompt dặn model tự bỏ qua trích đoạn
+# không liên quan.
+PDF_MIN_SCORE = 0.6
 
 
 def _pdf_vector_store_id():
@@ -225,6 +248,20 @@ def _pdf_vector_store_id():
     """
     index = load_index()
     return index.get('vector_store_id') if index.get('files') else None
+
+
+def _pdf_excerpts(vs_id, question, history):
+    """Trích đoạn PDF liên quan tới câu hỏi (chuỗi rỗng nếu không có hoặc tra lỗi)."""
+    # Câu hỏi nối tiếp ("vậy còn lệ phí?") thiếu ngữ cảnh -> ghép thêm câu hỏi trước đó.
+    last_question = next((m['content'] for m in reversed(history or []) if m['role'] == 'user'), '')
+    try:
+        result = client.vector_stores.search(
+            vs_id, query=f"{last_question}\n{question}".strip(), max_num_results=PDF_MAX_RESULTS)
+    except Exception as e:
+        print(f"⚠️ Lỗi tra cứu tài liệu PDF: {e}")
+        return ''
+    return '\n\n'.join(f"[{r.filename}]\n" + '\n'.join(c.text for c in r.content)
+                       for r in result.data if r.score >= PDF_MIN_SCORE)
 
 
 def _today():
@@ -246,13 +283,7 @@ def stream_answer(question, history=None):
     if not client:
         return
 
-    tools = [WEB_SEARCH_TOOL]
-    system_prompt = SYSTEM_PROMPT
     vs_id = _pdf_vector_store_id()
-    if vs_id:
-        tools.insert(0, {"type": "file_search", "vector_store_ids": [vs_id], "max_num_results": 8})
-        system_prompt = SYSTEM_PROMPT_WITH_PDF
-
     cache_key = None if history else _cache_key(question, vs_id)
     if cache_key:
         cached = _cache_get(cache_key)
@@ -263,9 +294,15 @@ def stream_answer(question, history=None):
                 yield SUGGESTIONS_SEPARATOR + json.dumps(suggestions, ensure_ascii=False)
             return
 
-    # Ngày hiện tại đặt CUỐI system prompt để phần đầu (giống hệt nhau ở mọi
-    # lần gọi) vẫn được OpenAI cache lại, giúp phản hồi nhanh và rẻ hơn.
-    messages = [{"role": "system", "content": f"{system_prompt}\nHôm nay là ngày {_today()}."}]
+    # Ngày hiện tại và trích đoạn PDF đặt CUỐI system prompt để phần đầu (giống
+    # hệt nhau ở mọi lần gọi) vẫn được OpenAI cache lại, giúp phản hồi nhanh và rẻ hơn.
+    excerpts = _pdf_excerpts(vs_id, question, history) if vs_id else ''
+    if excerpts:
+        system_content = (f"{SYSTEM_PROMPT_WITH_PDF}\nHôm nay là ngày {_today()}.\n\n"
+                          f"TRÍCH ĐOẠN TÀI LIỆU NỘI BỘ:\n{excerpts}")
+    else:
+        system_content = f"{SYSTEM_PROMPT}\nHôm nay là ngày {_today()}."
+    messages = [{"role": "system", "content": system_content}]
     messages.extend(history or [])
     messages.append({"role": "user", "content": question})
 
@@ -292,7 +329,7 @@ def stream_answer(question, history=None):
         stream = client.responses.create(
             model=CHAT_MODEL,
             reasoning={"effort": REASONING_EFFORT},
-            tools=tools,
+            tools=[WEB_SEARCH_TOOL],
             input=messages,
             stream=True,
         )
