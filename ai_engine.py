@@ -35,7 +35,6 @@ import re
 import time
 from datetime import datetime, timedelta, timezone
 
-import httpx
 from openai import OpenAI
 
 from config import OPENAI_API_KEY, CHAT_MODEL, FALLBACK_CHAT_MODEL, WARD_OFFICE_ADDRESS
@@ -44,8 +43,7 @@ import tailieu
 # Mặc định thư viện OpenAI chờ tới 10 phút và tự thử lại 2 lần mỗi lượt gọi: lỗi
 # mạng/vượt giới hạn có thể khiến người dùng chờ rất lâu. Thử lại 1 lần rồi
 # chuyển sang model dự phòng (xem stream_answer) nhanh hơn nhiều.
-client = OpenAI(api_key=OPENAI_API_KEY, timeout=httpx.Timeout(60, connect=5),
-                max_retries=1) if OPENAI_API_KEY else None
+client = OpenAI(api_key=OPENAI_API_KEY, timeout=60, max_retries=1) if OPENAI_API_KEY else None
 tailieu.phien_ban()  # nạp sẵn kho PDF khi server khởi động, người hỏi đầu tiên không phải chờ
 
 # ==================== TỐI ƯU TỐC ĐỘ ====================
