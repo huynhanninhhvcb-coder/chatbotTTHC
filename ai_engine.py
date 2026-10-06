@@ -19,10 +19,11 @@ cụ thể...) mà tra cứu web cũng không chắc chắn, AI vẫn phải khu
 xác minh trực tiếp tại nơi tiếp nhận thay vì khẳng định bừa.
 
 Nguồn tra cứu thứ hai: tài liệu PDF do phường tự tải lên (thư mục
-thutuc_data/, đồng bộ bằng sync_pdf.py lên vector store của OpenAI). Code tự
-tra vector store rồi đưa trích đoạn liên quan vào prompt (không dùng công cụ
-file_search - xem _pdf_excerpts). AI ưu tiên trích đoạn PDF trước, chỉ tra
-cứu web để bổ sung phần PDF không có; mâu thuẫn thì theo PDF.
+thutuc_data/, xây kho tra cứu bằng sync_pdf.py). Code tự tìm trích đoạn liên
+quan (tailieu.py) rồi đưa vào prompt, kèm tên và tình trạng hiệu lực của văn
+bản - không dùng công cụ file_search (xem ghi chú ở phần TÀI LIỆU PDF NỘI BỘ).
+AI ưu tiên trích đoạn PDF trước, chỉ tra cứu web để bổ sung phần PDF không có;
+mâu thuẫn thì theo PDF.
 
 Nguyên tắc quan trọng: stream_answer() PHẢI tự bắt lỗi và không trả về gì khi
 OpenAI không khả dụng (mất mạng, sai key, hết quota...), để app.py có thể
@@ -34,12 +35,18 @@ import re
 import time
 from datetime import datetime, timedelta, timezone
 
+import httpx
 from openai import OpenAI
 
-from config import OPENAI_API_KEY, CHAT_MODEL, WARD_OFFICE_ADDRESS
-from sync_pdf import load_index
+from config import OPENAI_API_KEY, CHAT_MODEL, FALLBACK_CHAT_MODEL, WARD_OFFICE_ADDRESS
+import tailieu
 
-client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+# Mặc định thư viện OpenAI chờ tới 10 phút và tự thử lại 2 lần mỗi lượt gọi: lỗi
+# mạng/vượt giới hạn có thể khiến người dùng chờ rất lâu. Thử lại 1 lần rồi
+# chuyển sang model dự phòng (xem stream_answer) nhanh hơn nhiều.
+client = OpenAI(api_key=OPENAI_API_KEY, timeout=httpx.Timeout(60, connect=5),
+                max_retries=1) if OPENAI_API_KEY else None
+tailieu.phien_ban()  # nạp sẵn kho PDF khi server khởi động, người hỏi đầu tiên không phải chờ
 
 # ==================== TỐI ƯU TỐC ĐỘ ====================
 # Đo thực tế (10/2026, câu "Thủ tục đăng ký khai sinh cần những gì?"): cấu hình
@@ -70,11 +77,11 @@ CACHE_MAX_ITEMS = 500
 _answer_cache = {}
 
 
-def _cache_key(question, vs_id):
-    # Gắn kèm vs_id để khi đồng bộ tài liệu PDF mới thì không dùng lại câu trả lời cũ.
+def _cache_key(question, kho):
+    # Gắn kèm phiên bản kho PDF để khi đồng bộ tài liệu mới thì không dùng lại câu trả lời cũ.
     # Bỏ khác biệt hoa/thường, khoảng trắng thừa và dấu câu cuối câu để
     # "Thủ tục khai sinh?" và "thủ tục khai sinh" dùng chung một câu trả lời.
-    return (vs_id, ' '.join(question.lower().split()).rstrip(' ?.!'))
+    return (kho, ' '.join(question.lower().split()).rstrip(' ?.!'))
 
 
 def _cache_get(key):
@@ -155,11 +162,15 @@ _WEB_SOURCE_RULE = f"""ƯU TIÊN TUYỆT ĐỐI tra cứu tại https://dichvuco
    nguồn khác (thuvienphapluat.vn, chinhphu.vn, congbao.chinhphu.vn) khi dichvucong.gov.vn không
    có đủ thông tin. {_EXTRA_SOURCES}"""
 
-# Chỉ dùng khi tra được trích đoạn PDF liên quan tới câu hỏi (xem _pdf_excerpts).
+# Chỉ dùng khi tra được trích đoạn PDF liên quan tới câu hỏi (xem tailieu.tim_trich_doan).
 _PDF_SOURCE_RULE = f"""TRÍCH ĐOẠN TÀI LIỆU NỘI BỘ của phường (ở cuối hướng dẫn này) là văn bản chính thức do
    phường cung cấp, là nguồn ưu tiên cao nhất - nhưng có thể không liên quan tới câu hỏi, khi đó bỏ
-   qua. Nếu trích đoạn đã đủ để trả lời thì trả lời theo trích đoạn, không cần tra web. Chỉ dùng
-   web_search để bổ sung phần trích đoạn không có; khi tra web thì ưu tiên https://dichvucong.gov.vn/
+   qua. Mỗi nhóm trích đoạn mở đầu bằng [tên văn bản - tình trạng hiệu lực]: mục "Căn cứ pháp lý"
+   ghi đúng tên văn bản đó; không áp dụng văn bản đã hết hiệu lực (người dùng hỏi đúng văn bản đó
+   thì nói rõ đã hết hiệu lực và văn bản nào thay thế); văn bản chưa có hiệu lực thì nói rõ ngày bắt
+   đầu áp dụng. Nếu trích đoạn đã đủ để trả lời thì trả lời ngay theo trích đoạn, KHÔNG tra web (kể
+   cả để kiểm tra lại hay tìm tên văn bản - tên đã ghi sẵn). Chỉ dùng web_search khi trích đoạn THIẾU
+   hẳn thông tin người dùng hỏi; khi tra web thì ưu tiên https://dichvucong.gov.vn/
    trước, sau đó mới tới thuvienphapluat.vn, chinhphu.vn, congbao.chinhphu.vn. {_EXTRA_SOURCES}
    Nếu tài liệu nội bộ và kết quả web MÂU THUẪN nhau, trả lời theo tài liệu nội bộ.
    Không nhắc tên file PDF hay cụm từ "tài liệu nội bộ" trong câu trả lời - chỉ nêu tên/số hiệu
@@ -167,9 +178,9 @@ _PDF_SOURCE_RULE = f"""TRÍCH ĐOẠN TÀI LIỆU NỘI BỘ của phường (�
 
 _SYSTEM_PROMPT_TEMPLATE = f"""Bạn là trợ lý ảo AI của Trung tâm phục vụ hành chính công phường Minh Phụng, TP. Hồ Chí Minh.
 
-Bạn CÓ {{tools_desc}}. Khi người dùng hỏi về một thủ tục hành chính nói chung,
-hãy tra cứu rồi trả lời NGẮN GỌN, CHỈ gồm đúng 3 mục sau (bỏ mục nào không tìm được, không thêm
-mục nào khác):
+Bạn CÓ {{tools_desc}}. Khi người dùng hỏi CÁCH LÀM một thủ tục hành chính (làm thế nào, cần
+giấy tờ gì), hãy tra cứu rồi trả lời NGẮN GỌN, CHỈ gồm đúng 3 mục sau (mục nào không có thông tin
+thì bỏ hẳn, không viết kiểu "chưa xác định"; không thêm mục nào khác):
 
 🔰 Trình tự thực hiện
 📋 Thành phần hồ sơ
@@ -195,9 +206,10 @@ QUY TẮC BẮT BUỘC:
    không viết thành đoạn văn dài.
 3. Mục "Căn cứ pháp lý" phải nêu rõ tên và số hiệu văn bản (luật/nghị định/thông tư/nghị quyết).
    KHÔNG chèn đường link/URL nào vào câu trả lời (kể cả dạng markdown link) - chỉ nêu tên văn bản.
-4. Nếu người dùng hỏi một chi tiết KHÁC ngoài 3 mục trên (lệ phí, thời gian giải quyết, đối tượng
-   áp dụng, nơi nộp...), vẫn tra cứu và trả lời thẳng, ngắn gọn vào đúng câu hỏi đó - không cần
-   nhắc lại 3 mục mặc định.
+4. Nếu người dùng hỏi một chi tiết KHÁC ngoài 3 mục trên (lệ phí, thời gian giải quyết, đối tượng,
+   điều kiện, chế độ/chính sách được hưởng, mức hỗ trợ, nơi nộp...), trả lời thẳng, ngắn gọn vào
+   đúng câu hỏi đó bằng gạch đầu dòng - KHÔNG dùng 3 mục mặc định; dòng cuối ghi "Căn cứ: <tên,
+   số hiệu văn bản đã dùng để trả lời>".
 5. Với chi tiết CÓ THỂ khác nhau theo từng phường mà tra cứu cũng không ra kết quả chắc chắn riêng
    cho phường Minh Phụng (VD: giờ làm việc, mẫu đơn riêng của phường), nói rõ đây là quy định
    chung và khuyên xác minh tại {WARD_OFFICE_ADDRESS}. KHÔNG tự bịa số liệu/quy định của phường.
@@ -226,47 +238,30 @@ SYSTEM_PROMPT_WITH_PDF = _SYSTEM_PROMPT_TEMPLATE.format(
     source_rule=_PDF_SOURCE_RULE)
 
 # ==================== TÀI LIỆU PDF NỘI BỘ ====================
-# Code tự tra kho PDF rồi đưa trích đoạn vào prompt, THAY VÌ cho model dùng công
-# cụ file_search: với file_search, OpenAI tự gỡ dấu trích dẫn tệp khỏi câu trả
-# lời và đã có lúc (gặp thực tế 10/2026) làm mất luôn vài chữ ngay sau chỗ trích
-# dẫn ("...mỗi học kỳ. ể được miễn...", "Nghị định Chính phủ" mất số hiệu) hoặc
-# để lọt dấu trích dẫn ra màn hình. Không có file_search thì model không trích
-# dẫn tệp nữa nên hết lỗi này.
-PDF_MAX_RESULTS = 5
-# Đo thực tế: câu liên quan tới 2 nghị định đạt ~0.7-0.9; câu không liên quan
-# (BHYT, chứng thực) ~0.5-0.57. Câu như "khai sinh" vẫn đạt ~0.79 vì nghị định
-# có nhắc giấy khai sinh trong hồ sơ - nên prompt dặn model tự bỏ qua trích đoạn
-# không liên quan.
-PDF_MIN_SCORE = 0.6
+# Code tự tìm trích đoạn PDF (tailieu.py) rồi đưa vào prompt, THAY VÌ cho model
+# dùng công cụ file_search: với file_search, OpenAI tự gỡ dấu trích dẫn tệp khỏi
+# câu trả lời và đã có lúc (gặp thực tế 10/2026) làm mất luôn vài chữ ngay sau
+# chỗ trích dẫn ("...mỗi học kỳ. ể được miễn...", "Nghị định Chính phủ" mất số
+# hiệu) hoặc để lọt dấu trích dẫn ra màn hình. Không có file_search thì model
+# không trích dẫn tệp nữa nên hết lỗi này.
 
 
-def _pdf_vector_store_id():
-    """
-    ID vector store chứa tài liệu PDF, hoặc None nếu chưa đồng bộ tài liệu nào.
-    Đọc lại pdf_index.json mỗi lần gọi (file rất nhỏ) để tài liệu mới đồng bộ
-    có hiệu lực ngay, không cần khởi động lại server.
-    """
-    index = load_index()
-    return index.get('vector_store_id') if index.get('files') else None
-
-
-def _pdf_excerpts(vs_id, question, history):
-    """Trích đoạn PDF liên quan tới câu hỏi (chuỗi rỗng nếu không có hoặc tra lỗi)."""
-    # Câu hỏi nối tiếp ("vậy còn lệ phí?") thiếu ngữ cảnh -> ghép thêm câu hỏi trước đó.
-    last_question = next((m['content'] for m in reversed(history or []) if m['role'] == 'user'), '')
-    try:
-        result = client.vector_stores.search(
-            vs_id, query=f"{last_question}\n{question}".strip(), max_num_results=PDF_MAX_RESULTS)
-    except Exception as e:
-        print(f"⚠️ Lỗi tra cứu tài liệu PDF: {e}")
-        return ''
-    return '\n\n'.join(f"[{r.filename}]\n" + '\n'.join(c.text for c in r.content)
-                       for r in result.data if r.score >= PDF_MIN_SCORE)
-
-
-def _today():
+def _today_vn():
     # Giờ Việt Nam (UTC+7, không có giờ mùa hè) - server Render chạy theo giờ UTC.
-    return datetime.now(timezone(timedelta(hours=7))).strftime('%d/%m/%Y')
+    return datetime.now(timezone(timedelta(hours=7))).date()
+
+
+def _build_messages(question, history, excerpts, today):
+    # Ngày hiện tại và trích đoạn PDF đặt CUỐI system prompt để phần đầu (giống
+    # hệt nhau ở mọi lần gọi) vẫn được OpenAI cache lại, giúp phản hồi nhanh và rẻ hơn.
+    ngay = today.strftime('%d/%m/%Y')
+    if excerpts:
+        system_content = (f"{SYSTEM_PROMPT_WITH_PDF}\nHôm nay là ngày {ngay}.\n\n"
+                          f"TRÍCH ĐOẠN TÀI LIỆU NỘI BỘ:\n{excerpts}")
+    else:
+        system_content = f"{SYSTEM_PROMPT}\nHôm nay là ngày {ngay}."
+    return [{"role": "system", "content": system_content}, *(history or []),
+            {"role": "user", "content": question}]
 
 
 def stream_answer(question, history=None):
@@ -283,8 +278,7 @@ def stream_answer(question, history=None):
     if not client:
         return
 
-    vs_id = _pdf_vector_store_id()
-    cache_key = None if history else _cache_key(question, vs_id)
+    cache_key = None if history else _cache_key(question, tailieu.phien_ban())
     if cache_key:
         cached = _cache_get(cache_key)
         if cached:
@@ -294,17 +288,13 @@ def stream_answer(question, history=None):
                 yield SUGGESTIONS_SEPARATOR + json.dumps(suggestions, ensure_ascii=False)
             return
 
-    # Ngày hiện tại và trích đoạn PDF đặt CUỐI system prompt để phần đầu (giống
-    # hệt nhau ở mọi lần gọi) vẫn được OpenAI cache lại, giúp phản hồi nhanh và rẻ hơn.
-    excerpts = _pdf_excerpts(vs_id, question, history) if vs_id else ''
-    if excerpts:
-        system_content = (f"{SYSTEM_PROMPT_WITH_PDF}\nHôm nay là ngày {_today()}.\n\n"
-                          f"TRÍCH ĐOẠN TÀI LIỆU NỘI BỘ:\n{excerpts}")
-    else:
-        system_content = f"{SYSTEM_PROMPT}\nHôm nay là ngày {_today()}."
-    messages = [{"role": "system", "content": system_content}]
-    messages.extend(history or [])
-    messages.append({"role": "user", "content": question})
+    started = time.monotonic()
+    today = _today_vn()
+    # Câu hỏi nối tiếp ("vậy còn lệ phí?") thiếu ngữ cảnh -> ghép thêm câu hỏi trước đó khi tra PDF.
+    last_question = next((m['content'] for m in reversed(history or []) if m['role'] == 'user'), '')
+    excerpts, pdf_score = tailieu.tim_trich_doan(client, f"{last_question}\n{question}".strip(), today)
+    t_pdf = time.monotonic() - started
+    messages = _build_messages(question, history, excerpts, today)
 
     shown = []               # các dòng đã gửi cho người dùng
     suggestion_lines = None  # các dòng từ dấu [GỢI Ý] trở đi (không hiển thị)
@@ -323,36 +313,60 @@ def stream_answer(question, history=None):
                 return None
         return _strip_links_line(line)
 
-    pending = ''  # phần dòng đang viết dở, chưa lọc link được
     completed = False
-    try:
-        stream = client.responses.create(
-            model=CHAT_MODEL,
-            reasoning={"effort": REASONING_EFFORT},
-            tools=[WEB_SEARCH_TOOL],
-            input=messages,
-            stream=True,
-        )
-        for event in stream:
-            if event.type == "response.output_text.delta":
-                pending += event.delta
-                *lines, pending = pending.split('\n')
-                for line in lines:
-                    text = take_line(line)
-                    if text is not None:
-                        shown.append(text)
-                        yield text + '\n'
-            elif event.type == "response.completed":
-                completed = True
-        text = take_line(pending) if pending else None
-        if text is not None:
-            shown.append(text)
-            yield text
-    except Exception as e:
-        print(f"⚠️ Lỗi gọi OpenAI Responses API: {e}")
-        if shown:  # đã gửi ít nhất 1 dòng câu trả lời cho người dùng
-            yield '\n\n⚠️ Câu trả lời bị gián đoạn, bạn vui lòng hỏi lại.'
-        return
+    t_first = None
+    n_web = 0
+    # Model chính lỗi trước khi kịp gửi dòng nào (thường do vượt giới hạn token/
+    # phút) -> hỏi lại bằng model dự phòng; đã gửi dở thì không hỏi lại được nữa.
+    for model in (CHAT_MODEL, FALLBACK_CHAT_MODEL):
+        pending = ''  # phần dòng đang viết dở, chưa lọc link được
+        suggestion_lines = None
+        try:
+            stream = client.responses.create(
+                model=model,
+                reasoning={"effort": REASONING_EFFORT},
+                tools=[WEB_SEARCH_TOOL],
+                input=messages,
+                stream=True,
+            )
+            for event in stream:
+                if event.type == "response.output_text.delta":
+                    pending += event.delta
+                    *lines, pending = pending.split('\n')
+                    for line in lines:
+                        text = take_line(line)
+                        if text is not None:
+                            if t_first is None:
+                                t_first = time.monotonic() - started
+                            shown.append(text)
+                            yield text + '\n'
+                elif event.type == "response.completed":
+                    completed = True
+                    n_web = sum(1 for item in event.response.output if item.type == "web_search_call")
+                elif event.type == "response.failed":
+                    error = event.response.error
+                    raise RuntimeError(error.message if error else "response.failed")
+                elif event.type == "error":
+                    raise RuntimeError(event.message)
+            text = take_line(pending) if pending else None
+            if text is not None:
+                if t_first is None:
+                    t_first = time.monotonic() - started
+                shown.append(text)
+                yield text
+            break
+        except Exception as e:
+            print(f"⚠️ Lỗi gọi OpenAI Responses API ({model}): {e}")
+            if shown:  # đã gửi ít nhất 1 dòng câu trả lời cho người dùng
+                yield '\n\n⚠️ Câu trả lời bị gián đoạn, bạn vui lòng hỏi lại.'
+                return
+    else:
+        return  # cả 2 model đều lỗi -> app.py trả câu xin lỗi + hướng dẫn liên hệ
+
+    # Một dòng log cho mỗi câu trả lời (xem trong mục Logs của Render) để theo dõi tốc độ thật.
+    first = f"{t_first:.2f}s" if t_first is not None else "-"
+    print(f"⏱️ PDF {t_pdf:.2f}s (khớp {pdf_score:.2f}) | dòng đầu {first} | "
+          f"xong {time.monotonic() - started:.2f}s | tra web {n_web} lần | {model}", flush=True)
 
     suggestions = _parse_suggestions('\n'.join(suggestion_lines or []))
     if suggestions:

@@ -6,3 +6,4 @@ venv/
 .venv/
 *.log
 .checks/chrome-profile-redesign/
+pdf_index.json.tmp

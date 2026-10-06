@@ -1,33 +1,244 @@
 """
-Đồng bộ thư mục thutuc_data/ lên vector store của OpenAI để chatbot tra cứu
-nội dung PDF bằng công cụ file_search (xem ai_engine.py).
+Xây dựng kho tra cứu từ các file PDF trong thutuc_data/ để chatbot tự tìm trích
+đoạn liên quan tới câu hỏi (xem tailieu.py).
 
 Cách dùng: chép/xóa/sửa file PDF trong thutuc_data/ rồi chạy
     python sync_pdf.py
+sau đó commit + push file pdf_index.json (server Render đọc kho từ file này).
 
-Script so sánh mã băm (SHA-256) từng file với lần đồng bộ trước (lưu trong
-pdf_index.json) nên chỉ xử lý phần thay đổi:
-  - File mới         -> tải lên
-  - File đã sửa      -> xóa bản cũ trên OpenAI, tải bản mới lên
-  - File đã bị xóa   -> xóa khỏi OpenAI
-  - File không đổi   -> bỏ qua
-Không cần khởi động lại web server sau khi đồng bộ: ai_engine.py đọc lại
-pdf_index.json ở mỗi câu hỏi.
+Với mỗi file PDF mới hoặc đã sửa (so mã băm SHA-256 với lần chạy trước), script:
+  1. Đọc chữ trong PDF. PDF dạng ảnh scan (không có lớp chữ) -> báo lỗi, bỏ qua.
+  2. Nhờ AI đọc phần đầu và các câu về hiệu lực để lấy thông tin văn bản: số
+     hiệu, tên đầy đủ, ngày có hiệu lực, các văn bản bị nó thay thế. Nhờ đó
+     chatbot biết văn bản nào đã hết hiệu lực (VD Nghị quyết 32/2025/NQ-HĐND
+     thay thế 40/2024/NQ-HĐND) để không trích nhầm quy định cũ. AI đọc sai thì
+     sửa tay các trường này trong pdf_index.json được - lần chạy sau giữ nguyên
+     chừng nào file PDF không đổi.
+  3. Chia văn bản theo từng Điều (Điều dài thì chia tiếp theo khoản, điểm) và
+     tính vector ngữ nghĩa (embedding) cho từng đoạn.
+File không đổi được giữ nguyên, không tốn lượt gọi API nào. Không cần khởi động
+lại web server: tailieu.py tự đọc lại pdf_index.json khi file này thay đổi.
 """
+import base64
 import hashlib
 import json
 import os
+import re
+import struct
 import sys
+from datetime import date
 
-from openai import OpenAI, NotFoundError
+from openai import OpenAI
 
-from config import OPENAI_API_KEY, PDF_DIR, PDF_INDEX_FILE
+from config import (OPENAI_API_KEY, CHAT_MODEL, PDF_DIR, PDF_INDEX_FILE,
+                    EMBEDDING_MODEL, EMBEDDING_DIMENSIONS)
 
-VECTOR_STORE_NAME = "chatbot-hanhchinh-minhphung-tailieu"
+# So khớp câu hỏi trên đoạn NGẮN (~800 ký tự: một vài khoản) nhưng đưa cho AI
+# đọc cả Điều chứa đoạn đó (nếu Điều không quá dài). Đo trên 14 câu hỏi mẫu
+# (10/2026): đoạn 800 ký tự tìm đúng đoạn trong top 6 cho 14/14 câu, đoạn 2.000
+# ký tự chỉ 12/14 - đoạn dài gồm nhiều ý nên "loãng", câu hỏi về một ý nhỏ
+# (VD "bà bầu nhà nghèo được hỗ trợ khám sàng lọc không") không khớp được.
+DOAN_MAX_CHARS = 800
+DIEU_MAX_CHARS = 2500  # Điều dài hơn thì chỉ đưa các đoạn khớp, không đưa cả Điều
+NGU_CANH_MAX_CHARS = 300  # dòng đầu Điều/khoản lặp lại ở đầu mỗi đoạn con
+# Mẫu tờ khai/phụ lục chỉ giữ tiêu đề: phần thân toàn ô trống "Họ tên, Ngày
+# sinh, Nơi cư trú..." khiến chúng khớp nhầm với mọi câu hỏi về thủ tục.
+MAU_MAX_CHARS = 250
+EMBEDDING_BATCH = 64
 
 
+# ==================== ĐỌC & CHIA ĐOẠN ====================
+# Dòng mở đầu một ý mới trong văn bản pháp luật. pypdf trả về chữ đã bị ngắt
+# dòng theo khổ giấy, nên các dòng còn lại được nối vào dòng trước.
+_BAT_DAU_Y = re.compile(
+    r'(Điều \d+[a-z]?\.|Chương [IVXLCDM]+\b|CHƯƠNG [IVXLCDM]+\b|Mục \d+\b|MỤC \d+\b'
+    r'|Phụ lục|PHỤ LỤC|Mẫu số|Nơi nhận:|\d+(?:\.\d+)*\.\s|[a-zđ]\)\s|[-–+•]\s)')
+_DIEU = re.compile(r'Điều \d+[a-z]?\.')
+_KHOAN = re.compile(r'\d+\.\s')
+_DIEM = re.compile(r'[a-zđ]\)\s')
+_PHU_LUC = re.compile(r'(Phụ lục|PHỤ LỤC|Mẫu số)\b')
+
+
+def doc_chu_pdf(path):
+    from pypdf import PdfReader  # chỉ cần khi đồng bộ, server không dùng tới
+    return '\n'.join(page.extract_text() or '' for page in PdfReader(path).pages)
+
+
+_QUOC_HIEU = re.compile(r'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\s*Độc lập\s*-\s*Tự do\s*-\s*Hạnh phúc\s*')
+
+
+def _ghep_dong(text):
+    lines = []
+    for raw in _QUOC_HIEU.sub('', text).splitlines():
+        line = re.sub(r'[.…]{3,}', '…', raw).strip()  # dòng chấm để điền trong mẫu đơn
+        if not line or re.fullmatch(r'[-_=…]{3,}', line):
+            continue
+        if lines and not _BAT_DAU_Y.match(line) and not re.search(r'[.:;!?]$', lines[-1]):
+            # "NĐ-" + "CP" -> "NĐ-CP" (số hiệu văn bản bị ngắt dòng ngay sau dấu gạch)
+            joiner = '' if re.search(r'\S-$', lines[-1]) else ' '
+            lines[-1] += joiner + line
+        else:
+            lines.append(line)
+    return lines
+
+
+def _doan(context, lines):
+    return '\n'.join(context + lines)
+
+
+def _ngan_sach(context):
+    return max(DOAN_MAX_CHARS - len(_doan(context, [])) - 1, 500)
+
+
+def _chia_nhom(group, context, levels):
+    """
+    Chia một nhóm dòng quá dài (dòng đầu là tên Điều/khoản/điểm) thành nhiều
+    đoạn; dòng đầu được lặp lại ở đầu mỗi đoạn con để đoạn nào cũng rõ ngữ cảnh.
+    """
+    if len(group) == 1:  # một câu quá dài, không còn cấu trúc để chia: cắt cứng
+        text, budget = group[0], _ngan_sach(context)
+        return [_doan(context, [text[i:i + budget]]) for i in range(0, len(text), budget)]
+    first, chunks = group[0], []
+    if len(first) > NGU_CANH_MAX_CHARS:
+        chunks = _chia_nhom([first], context, levels)
+        first = first[:NGU_CANH_MAX_CHARS] + '…'
+    return chunks + _dong_goi(group[1:], context + [first], levels)
+
+
+def _dong_goi(lines, context, levels):
+    """
+    Gom các khoản (không có khoản thì các điểm, rồi tới từng dòng) liền nhau
+    thành đoạn <= DOAN_MAX_CHARS, mỗi đoạn mở đầu bằng các dòng ngữ cảnh.
+    """
+    budget = _ngan_sach(context)
+    groups, rest = None, levels
+    while rest and groups is None:
+        pattern, rest = rest[0], rest[1:]
+        starts = [i for i, line in enumerate(lines) if pattern.match(line)]
+        if starts:
+            groups = ([lines[:starts[0]]] if starts[0] else []) + \
+                     [lines[a:b] for a, b in zip(starts, starts[1:] + [len(lines)])]
+    if groups is None:
+        groups = [[line] for line in lines]
+
+    chunks, current = [], []
+    for group in groups:
+        if len('\n'.join(group)) > budget:
+            if current:
+                chunks.append(_doan(context, current))
+                current = []
+            chunks.extend(_chia_nhom(group, context, rest))
+            continue
+        if current and len('\n'.join(current + group)) > budget:
+            chunks.append(_doan(context, current))
+            current = []
+        current += group
+    if current:
+        chunks.append(_doan(context, current))
+    return chunks
+
+
+def chia_doan(text):
+    """
+    Chia văn bản thành các khối (phần mở đầu, từng Điều, từng phụ lục/mẫu),
+    mỗi khối chia tiếp thành các đoạn ngắn để so khớp với câu hỏi.
+    Trả về [(chữ của cả khối, [đoạn, ...]), ...].
+    """
+    blocks, current, skipping = [], [], False
+    for line in _ghep_dong(text):
+        if line.startswith('Nơi nhận:'):
+            skipping = True  # danh sách nơi nhận + chữ ký: không có nội dung để tra
+            continue
+        starts_block = _DIEU.match(line) or _PHU_LUC.match(line)
+        if skipping and not _PHU_LUC.match(line):
+            continue
+        skipping = False
+        if starts_block and current:
+            blocks.append(current)
+            current = []
+        current.append(line)
+    if current:
+        blocks.append(current)
+
+    result, seen = [], set()
+    for block in blocks:
+        text = '\n'.join(block)
+        if _PHU_LUC.match(text):
+            text = ' '.join(text.split())[:MAU_MAX_CHARS]
+        if text in seen:  # mẫu/phụ lục lặp lại cùng tiêu đề
+            continue
+        seen.add(text)
+        chunks = [text] if len(text) <= DOAN_MAX_CHARS else _chia_nhom(block, [], [_KHOAN, _DIEM])
+        result.append((text, chunks))
+    return result
+
+
+# ==================== THÔNG TIN VĂN BẢN (AI đọc) ====================
+_META_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "so_hieu": {"type": "string",
+                    "description": "Số hiệu văn bản, đúng như ghi trên văn bản. VD: 32/2025/NQ-HĐND"},
+        "ten": {"type": "string",
+                "description": "Tên đầy đủ để trích dẫn: loại văn bản + số hiệu + ngày ban hành + cơ quan ban "
+                               "hành + trích yếu. VD: Nghị quyết số 32/2025/NQ-HĐND ngày 28/8/2025 của HĐND "
+                               "TP. Hồ Chí Minh quy định về chính sách khen thưởng, hỗ trợ ..."},
+        "ngay_ban_hanh": {"type": ["string", "null"], "description": "Ngày ban hành, dạng YYYY-MM-DD"},
+        "hieu_luc_tu": {"type": ["string", "null"],
+                        "description": "Ngày văn bản bắt đầu có hiệu lực, dạng YYYY-MM-DD"},
+        "thay_the": {"type": "array", "items": {"type": "string"},
+                     "description": "Số hiệu các văn bản bị văn bản này thay thế hoặc tuyên bố hết hiệu lực "
+                                    "TOÀN BỘ. Không ghi văn bản chỉ bị sửa đổi, bổ sung hoặc bãi bỏ một phần."},
+    },
+    "required": ["so_hieu", "ten", "ngay_ban_hanh", "hieu_luc_tu", "thay_the"],
+    "additionalProperties": False,
+}
+_CAU_HIEU_LUC = re.compile(r'hiệu lực|thay thế|bãi bỏ', re.IGNORECASE)
+
+
+def doc_thong_tin(client, text):
+    lines = _ghep_dong(text)
+    dau = '\n'.join(lines)[:2500]
+    hieu_luc = '\n'.join(line for line in lines if _CAU_HIEU_LUC.search(line))[:4000]
+    resp = client.responses.create(
+        model=CHAT_MODEL,
+        reasoning={"effort": "low"},
+        input=[
+            {"role": "system", "content": "Trích xuất thông tin của văn bản quy phạm pháp luật Việt Nam từ "
+                                          "phần đầu văn bản và các câu nói về hiệu lực. Chỉ dựa vào nội dung "
+                                          "được cung cấp, không suy đoán."},
+            {"role": "user", "content": f"PHẦN ĐẦU VĂN BẢN:\n{dau}\n\nCÁC CÂU VỀ HIỆU LỰC:\n{hieu_luc}"},
+        ],
+        text={"format": {"type": "json_schema", "name": "thong_tin_van_ban",
+                         "schema": _META_SCHEMA, "strict": True}},
+    )
+    meta = json.loads(resp.output_text)
+    for key in ('ngay_ban_hanh', 'hieu_luc_tu'):
+        try:
+            meta[key] = date.fromisoformat(meta[key]).isoformat()
+        except (TypeError, ValueError):
+            meta[key] = None
+    return meta
+
+
+# ==================== VECTOR NGỮ NGHĨA ====================
+def ma_hoa_vector(vector):
+    """Lưu gọn vector dạng float16 + base64 (~2,7KB/đoạn thay vì ~20KB nếu ghi số thập phân)."""
+    return base64.b64encode(struct.pack(f'<{len(vector)}e', *vector)).decode('ascii')
+
+
+def tinh_vector(client, texts):
+    vectors = []
+    for i in range(0, len(texts), EMBEDDING_BATCH):
+        resp = client.embeddings.create(model=EMBEDDING_MODEL, dimensions=EMBEDDING_DIMENSIONS,
+                                        input=texts[i:i + EMBEDDING_BATCH])
+        vectors.extend(item.embedding for item in resp.data)
+    return vectors
+
+
+# ==================== ĐỒNG BỘ ====================
 def load_index():
-    """Đọc trạng thái đồng bộ. Trả về dict rỗng nếu chưa đồng bộ lần nào."""
+    """Đọc kho đã xây. Trả về dict rỗng nếu chưa đồng bộ lần nào."""
     try:
         with open(PDF_INDEX_FILE, encoding='utf-8') as f:
             return json.load(f)
@@ -36,8 +247,11 @@ def load_index():
 
 
 def _save_index(index):
-    with open(PDF_INDEX_FILE, 'w', encoding='utf-8') as f:
-        json.dump(index, f, ensure_ascii=False, indent=2)
+    # Ghi ra file tạm rồi đổi tên: server đang chạy không bao giờ đọc phải file ghi dở.
+    tmp = PDF_INDEX_FILE + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump(index, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, PDF_INDEX_FILE)
 
 
 def _sha256(path):
@@ -48,32 +262,23 @@ def _sha256(path):
     return h.hexdigest()
 
 
-def _ensure_vector_store(client, index):
-    """Dùng lại vector store cũ nếu còn tồn tại, nếu không thì tạo mới."""
-    vs_id = index.get('vector_store_id')
-    if vs_id:
-        try:
-            client.vector_stores.retrieve(vs_id)
-            return vs_id
-        except NotFoundError:
-            print(f"⚠️ Vector store {vs_id} không còn trên OpenAI, tạo mới và tải lại toàn bộ.")
-    vs = client.vector_stores.create(name=VECTOR_STORE_NAME)
-    index.clear()
-    index['vector_store_id'] = vs.id
-    index['files'] = {}
-    _save_index(index)
-    print(f"✅ Đã tạo vector store mới: {vs.id}")
-    return vs.id
-
-
-def _remove_remote(client, vs_id, file_id):
-    # Gỡ khỏi vector store rồi xóa luôn file gốc, tránh tốn dung lượng lưu trữ.
-    for delete in (lambda: client.vector_stores.files.delete(file_id, vector_store_id=vs_id),
-                   lambda: client.files.delete(file_id)):
-        try:
-            delete()
-        except NotFoundError:
-            pass
+def xu_ly_file(client, path):
+    """Đọc, lấy thông tin, chia đoạn, tính vector cho một file PDF. Lỗi -> ValueError."""
+    text = doc_chu_pdf(path)
+    if len(text.strip()) < 200:
+        raise ValueError("PDF dạng ảnh scan, không có lớp chữ - cần chuyển sang PDF có chữ (OCR) trước")
+    meta = doc_thong_tin(client, text)
+    blocks = chia_doan(text)
+    # Gắn tên văn bản vào trước mỗi đoạn khi tính vector, để câu hỏi nhắc tới chủ
+    # đề/số hiệu văn bản (VD "chính sách dân số", "Nghị quyết 32") vẫn tìm đúng đoạn.
+    vectors = iter(tinh_vector(client, [f"{meta['ten']}\n{chunk}" for _, chunks in blocks for chunk in chunks]))
+    dieu = []
+    for block_text, chunks in blocks:
+        if len(block_text) <= DIEU_MAX_CHARS:  # AI đọc cả khối -> không cần lưu chữ từng đoạn
+            dieu.append({'text': block_text, 'doan': [{'vector': ma_hoa_vector(next(vectors))} for _ in chunks]})
+        else:
+            dieu.append({'doan': [{'text': chunk, 'vector': ma_hoa_vector(next(vectors))} for chunk in chunks]})
+    return {**meta, 'dieu': dieu}
 
 
 def main():
@@ -84,53 +289,45 @@ def main():
 
     os.makedirs(PDF_DIR, exist_ok=True)
     client = OpenAI(api_key=OPENAI_API_KEY)
-    index = load_index()
-    vs_id = _ensure_vector_store(client, index)
-    synced = index.setdefault('files', {})
+    old = load_index()
+    # Đổi model/số chiều embedding thì vector cũ không so được với vector mới -> làm lại hết.
+    same_model = (old.get('embedding_model'), old.get('dimensions')) == (EMBEDDING_MODEL, EMBEDDING_DIMENSIONS)
+    old_files = old.get('files', {}) if same_model else {}
+    index = {'embedding_model': EMBEDDING_MODEL, 'dimensions': EMBEDDING_DIMENSIONS, 'files': {}}
 
     local = {name: _sha256(os.path.join(PDF_DIR, name))
              for name in sorted(os.listdir(PDF_DIR))
              if name.lower().endswith('.pdf') and os.path.isfile(os.path.join(PDF_DIR, name))}
-
-    removed = [n for n in synced if n not in local]
-    changed = [n for n in local if n in synced and synced[n]['sha256'] != local[n]]
-    added = [n for n in local if n not in synced]
-    unchanged = len(local) - len(added) - len(changed)
-
-    for name in removed:
-        _remove_remote(client, vs_id, synced.pop(name)['file_id'])
-        _save_index(index)
-        print(f"🗑️  Đã xóa: {name}")
-
+    removed = [n for n in old_files if n not in local]
+    added = changed = unchanged = 0
     failed = []
-    for name in changed + added:
-        if name in synced:
-            _remove_remote(client, vs_id, synced.pop(name)['file_id'])
-            _save_index(index)
-        print(f"⏳ Đang tải lên: {name} ...", flush=True)
-        with open(os.path.join(PDF_DIR, name), 'rb') as f:
-            vs_file = client.vector_stores.files.upload_and_poll(
-                vector_store_id=vs_id, file=f, attributes={'ten_file': name[:512]})
-        # PDF dạng ảnh scan (không có lớp chữ) vẫn báo "completed" nhưng không
-        # trích được chữ nào (usage_bytes = 0) - giữ lại chỉ làm file_search chạy
-        # vô ích, tốn thêm vài giây mỗi câu hỏi, nên coi là lỗi.
-        if vs_file.status == 'completed' and not vs_file.usage_bytes:
-            vs_file.status = 'no_text'
-        if vs_file.status != 'completed':
-            if vs_file.status == 'no_text':
-                reason = "PDF dạng ảnh scan, không có lớp chữ - cần chuyển sang PDF có chữ (OCR) trước"
-            else:
-                reason = vs_file.last_error.message if vs_file.last_error else vs_file.status
-            _remove_remote(client, vs_id, vs_file.id)
-            failed.append((name, reason))
-            print(f"❌ Lỗi xử lý: {name} - {reason}")
+    for name, sha in local.items():
+        entry = old_files.get(name)
+        if entry and entry.get('sha256') == sha and entry.get('dieu'):
+            index['files'][name] = entry
+            unchanged += 1
             continue
-        synced[name] = {'file_id': vs_file.id, 'sha256': local[name]}
-        _save_index(index)
-        print(f"✅ {'Đã cập nhật' if name in changed else 'Đã thêm'}: {name}")
+        print(f"⏳ Đang xử lý: {name} ...", flush=True)
+        try:
+            data = xu_ly_file(client, os.path.join(PDF_DIR, name))
+        except Exception as e:
+            failed.append(name)
+            print(f"❌ Lỗi xử lý: {name} - {e}")
+            continue
+        index['files'][name] = {'sha256': sha, **data}
+        if entry:
+            changed += 1
+        else:
+            added += 1
+        print(f"✅ {'Đã cập nhật' if entry else 'Đã thêm'}: {name} - {data['ten'][:90]} "
+              f"(hiệu lực từ {data['hieu_luc_tu'] or '?'}, "
+              f"{sum(len(d['doan']) for d in data['dieu'])} đoạn)")
+    for name in removed:
+        print(f"🗑️  Đã xóa: {name}")
+    _save_index(index)
 
-    print(f"\nHoàn tất: {len(added)} mới, {len(changed)} cập nhật, {len(removed)} xóa, "
-          f"{unchanged} không đổi, {len(failed)} lỗi. Tổng số tài liệu: {len(synced)}.")
+    print(f"\nHoàn tất: {added} mới, {changed} cập nhật, {len(removed)} xóa, {unchanged} không đổi, "
+          f"{len(failed)} lỗi. Tổng số tài liệu: {len(index['files'])}.")
     return 1 if failed else 0
 
 
