@@ -32,6 +32,7 @@ không được phép "sập" chỉ vì AI lỗi.
 """
 import json
 import re
+import threading
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -45,6 +46,21 @@ import tailieu
 # chuyển sang model dự phòng (xem stream_answer) nhanh hơn nhiều.
 client = OpenAI(api_key=OPENAI_API_KEY, timeout=60, max_retries=1) if OPENAI_API_KEY else None
 tailieu.phien_ban()  # nạp sẵn kho PDF khi server khởi động, người hỏi đầu tiên không phải chờ
+
+
+def _lam_nong_ket_noi():
+    # Lần gọi OpenAI đầu tiên sau khi server khởi động phải mở kết nối mới (đo
+    # 10/2026: bước tra PDF mất ~6s thay vì ~0,3s). Gọi trước một lần ở luồng nền
+    # để người hỏi đầu tiên không phải chờ. Lỗi thì bỏ qua.
+    try:
+        client.with_options(timeout=10).embeddings.create(
+            model=tailieu.EMBEDDING_MODEL, dimensions=tailieu.EMBEDDING_DIMENSIONS, input="khởi động")
+    except Exception as e:
+        print(f"⚠️ Làm nóng kết nối OpenAI lỗi: {e}")
+
+
+if client:
+    threading.Thread(target=_lam_nong_ket_noi, daemon=True).start()
 
 # ==================== TỐI ƯU TỐC ĐỘ ====================
 # Đo thực tế (10/2026, câu "Thủ tục đăng ký khai sinh cần những gì?"): cấu hình
@@ -63,6 +79,12 @@ WEB_SEARCH_TOOL = {
     "filters": {"allowed_domains": ALLOWED_DOMAINS},
     "user_location": {"type": "approximate", "country": "VN"},
 }
+# Trích đoạn PDF khớp từ mức này trở lên (của văn bản đang áp dụng) thì gần
+# như chắc chắn đã chứa câu trả lời, nhưng đo 10/2026 model vẫn tự tra web thêm
+# 1-2 lần (mỗi lần ~2-4s) dù prompt dặn không cần. Khi đó không đưa công cụ
+# web_search cho model nữa. Đoạn đúng đạt 0,51-0,73, câu hỏi không có trong
+# kho cao nhất 0,50 (xem tailieu.MIN_SCORE).
+PDF_DU_TRA_LOI = 0.62
 
 # Bộ nhớ đệm câu trả lời: người dân thường hỏi lặp lại cùng một thủ tục (khai
 # sinh, tạm trú...), nên câu hỏi giống hệt sẽ trả lời ngay thay vì gọi lại AI.
@@ -297,6 +319,7 @@ def stream_answer(question, history=None):
     excerpts, pdf_score = tailieu.tim_trich_doan(client, f"{last_question}\n{question}".strip(), today)
     t_pdf = time.monotonic() - started
     messages = _build_messages(question, history, excerpts, today)
+    tools = [] if pdf_score >= PDF_DU_TRA_LOI else [WEB_SEARCH_TOOL]
 
     shown = []               # các dòng đã gửi cho người dùng
     suggestion_lines = None  # các dòng từ dấu [GỢI Ý] trở đi (không hiển thị)
@@ -327,7 +350,7 @@ def stream_answer(question, history=None):
             stream = client.responses.create(
                 model=model,
                 reasoning={"effort": REASONING_EFFORT},
-                tools=[WEB_SEARCH_TOOL],
+                tools=tools,
                 input=messages,
                 stream=True,
             )

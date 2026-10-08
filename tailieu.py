@@ -169,7 +169,7 @@ def xep_hang(client, query, doan, files=None):
 
 def tim_trich_doan(client, query, today):
     """
-    (trích đoạn, điểm khớp cao nhất): trích đoạn liên quan tới câu hỏi đã ghi tên
+    (trích đoạn, điểm khớp cao nhất của văn bản đang áp dụng): trích đoạn liên quan tới câu hỏi đã ghi tên
     + hiệu lực văn bản, sẵn sàng đưa vào prompt. ('', 0) nếu kho trống, không có
     đoạn nào đủ liên quan hoặc gọi API lỗi (chatbot vẫn trả lời bằng tra cứu web).
     """
@@ -195,7 +195,8 @@ def tim_trich_doan(client, query, today):
             het_hieu_luc[name] = status[name][1]
             continue
         xet += 1
-        best = max(best, score)
+        if not status[name][1].startswith('chưa có hiệu lực'):
+            best = max(best, score)  # văn bản chưa áp dụng không đủ để trả lời thay tra web
         if text in seen or total + len(text) > MAX_TRICH_DOAN_CHARS:
             continue  # nhiều đoạn cùng một Điều -> chỉ đưa Điều đó một lần
         seen.add(text)
