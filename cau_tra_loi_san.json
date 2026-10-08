@@ -1,0 +1,218 @@
+{
+ "ngay_tao": "2026-10-09",
+ "nut": [
+  "Thủ tục đăng ký khai sinh cần những gì?",
+  "Thủ tục đăng ký kết hôn cần những gì?",
+  "Đăng ký tạm trú cần giấy tờ gì?",
+  "Đăng ký thường trú cần giấy tờ gì?",
+  "Chứng thực bản sao cần mang gì?",
+  "Làm lại thẻ căn cước bị mất thế nào?",
+  "Xin xác nhận tình trạng hôn nhân thế nào?",
+  "Thủ tục đăng ký khai tử cần những gì?"
+ ],
+ "cau_tra_loi": {
+  "thủ tục đăng ký khai sinh cần những gì": {
+   "cau_hoi": "Thủ tục đăng ký khai sinh cần những gì?",
+   "answer": "🔰 **Trình tự thực hiện**\n- Nộp hồ sơ trực tiếp tại Trung tâm Phục vụ hành chính công cấp xã có thẩm quyền hoặc trực tuyến; nhận Giấy khai sinh.\n\n📋 **Thành phần hồ sơ**\n- Tờ khai đăng ký khai sinh theo mẫu.\n- Giấy chứng sinh; nếu không có, nộp xác nhận của người làm chứng, hoặc giấy cam đoan nếu không có người làm chứng. Nếu đã có dữ liệu điện tử ký số, không cần nộp bản giấy.\n- Giấy tờ tùy thân của người đi đăng ký để xuất trình khi cần đối chiếu.\n\n⚖️ **Căn cứ pháp lý**\n- Luật Hộ tịch số 60/2014/QH13; Nghị định số 123/2015/NĐ-CP, được sửa đổi, bổ sung bởi Nghị định số 07/2025/NĐ-CP; Nghị định số 120/2025/NĐ-CP; Quyết định số 1016/QĐ-UBND ngày 23/02/2026 của UBND TP. Hồ Chí Minh.\n\nBạn đăng ký đúng hạn cho bé sinh tại Việt Nam chứ?",
+   "suggestions": [
+    "Đúng hạn",
+    "Quá hạn",
+    "Sinh ở nước ngoài"
+   ]
+  },
+  "thủ tục đăng ký kết hôn cần những gì": {
+   "cau_hoi": "Thủ tục đăng ký kết hôn cần những gì?",
+   "answer": "🔰 **Trình tự thực hiện**\n- Nộp hồ sơ tại Trung tâm Phục vụ hành chính công phường Minh Phụng, **183A Lý Nam Đế**, hoặc trực tuyến qua Cổng Dịch vụ công Quốc gia/ứng dụng định danh quốc gia.\n- Khi đăng ký trực tiếp, hai bạn cùng có mặt để xác nhận tự nguyện và ký sổ, giấy chứng nhận kết hôn.\n\n📋 **Thành phần hồ sơ**\n- Tờ khai đăng ký kết hôn theo mẫu; nếu nộp trực tuyến, điền mẫu hộ tịch điện tử.\n- Giấy tờ tùy thân còn giá trị để đối chiếu khi nộp trực tiếp.\n- Giấy tờ chứng minh nơi cư trú chỉ cần bổ sung nếu cơ quan không tra cứu được thông tin.\n\n⚖️ **Căn cứ pháp lý**\n- Luật Hôn nhân và gia đình số 52/2014/QH13.\n- Luật Hộ tịch số 60/2014/QH13.\n- Nghị định số 123/2015/NĐ-CP.\n\nCó bên nào là người nước ngoài không?",
+   "suggestions": [
+    "Cả hai là công dân Việt Nam",
+    "Có bên là người nước ngoài"
+   ]
+  },
+  "đăng ký tạm trú cần giấy tờ gì": {
+   "cau_hoi": "Đăng ký tạm trú cần giấy tờ gì?",
+   "answer": "🔰 **Trình tự thực hiện**\n- Nộp hồ sơ trực tiếp tại Công an cấp xã nơi tạm trú hoặc nộp trực tuyến.\n\n📋 **Thành phần hồ sơ**\n- Tờ khai thay đổi thông tin cư trú **Mẫu CT01**; có thể lấy mẫu bằng nút **“Mẫu đơn”**.\n- Thông tin chứng minh chỗ ở hợp pháp; cơ quan đăng ký sẽ tra cứu dữ liệu. Nếu không tra cứu được, cung cấp giấy tờ chứng minh chỗ ở, như giấy tờ nhà hoặc văn bản thuê/mượn/ở nhờ. Văn bản thuê/mượn/ở nhờ không bắt buộc công chứng, chứng thực.\n- Nếu người đăng ký chưa thành niên, CT01 cần ghi ý kiến đồng ý của cha, mẹ hoặc người giám hộ, trừ khi đã có văn bản đồng ý.\n\n⚖️ **Căn cứ pháp lý**\n- Luật Cư trú số 68/2020/QH14; Nghị định số 154/2024/NĐ-CP; Thông tư số 53/2025/TT-BCA; Quyết định số 1523/QĐ-BCA-C06.\n\nBạn đăng ký cho bản thân hay theo danh sách hộ gia đình?",
+   "suggestions": [
+    "Cho bản thân",
+    "Theo danh sách hộ gia đình"
+   ]
+  },
+  "đăng ký thường trú cần giấy tờ gì": {
+   "cau_hoi": "Đăng ký thường trú cần giấy tờ gì?",
+   "answer": "🔰 Trình tự thực hiện\n- Nộp hồ sơ cho Công an cấp xã nơi bạn muốn đăng ký thường trú.\n\n📋 Thành phần hồ sơ\n- Tờ khai thay đổi thông tin cư trú, Mẫu CT01.\n- Nếu đăng ký tại nhà mình: thông tin chỗ ở hợp pháp được tra cứu từ cơ sở dữ liệu; nếu không tra cứu được, cần giấy tờ chứng minh.\n- Nếu đăng ký tại nhà người khác: cần sự đồng ý và giấy tờ chứng minh quan hệ; trường hợp thuê, mượn, ở nhờ cần thêm hợp đồng và giấy tờ chứng minh diện tích nhà ở theo quy định.\n\n⚖️ Căn cứ pháp lý\n- Luật Cư trú số 68/2020/QH14.\n- Nghị định số 154/2024/NĐ-CP.\n- Thông tư số 53/2025/TT-BCA.\n\nBạn đăng ký tại nhà mình hay nhà người khác?",
+   "suggestions": [
+    "Nhà mình",
+    "Nhà người khác"
+   ]
+  },
+  "chứng thực bản sao cần mang gì": {
+   "cau_hoi": "Chứng thực bản sao cần mang gì?",
+   "answer": "🔰 **Trình tự thực hiện**\n- Nộp tại Trung tâm phục vụ hành chính công phường Minh Phụng, 183A Lý Nam Đế; đối chiếu bản sao với bản chính rồi nhận kết quả.\n\n📋 **Thành phần hồ sơ**\n- Mang **bản chính giấy tờ cần chứng thực** và bản photocopy. Nếu chỉ mang bản chính, nơi tiếp nhận có thể photocopy giúp nếu có phương tiện.\n\n⚖️ **Căn cứ pháp lý**\n- Nghị định số 23/2015/NĐ-CP, được sửa đổi, bổ sung bởi Nghị định số 07/2025/NĐ-CP và Nghị định số 280/2025/NĐ-CP.",
+   "suggestions": [
+    "Lệ phí bao nhiêu?",
+    "Mất bao lâu?",
+    "Nộp trực tuyến được không?"
+   ]
+  },
+  "làm lại thẻ căn cước bị mất thế nào": {
+   "cau_hoi": "Làm lại thẻ căn cước bị mất thế nào?",
+   "answer": "🔰 **Trình tự thực hiện**\n- Đến Công an cấp xã hoặc đăng ký cấp lại trên Cổng Dịch vụ công/VNeID; kiểm tra và xác nhận thông tin.\n- Cán bộ lập hồ sơ từ dữ liệu hiện có; khi mất thẻ, ảnh và sinh trắc học đã thu nhận trước đó được sử dụng lại.\n\n📋 **Thành phần hồ sơ**\n- Thông tin được trích xuất thành Phiếu CC01 để bạn kiểm tra, ký xác nhận; nộp trực tuyến thì kê khai Phiếu DC02 điện tử.\n- Nếu thông tin chưa có trong Cơ sở dữ liệu quốc gia về dân cư, cần bổ sung giấy tờ chứng minh thông tin.\n\n⚖️ **Căn cứ pháp lý**\n- Luật Căn cước số 26/2023/QH15.\n- Nghị định số 70/2024/NĐ-CP.\n- Thông tư số 17/2024/TT-BCA; Thông tư số 53/2025/TT-BCA.",
+   "suggestions": [
+    "Lệ phí bao nhiêu?",
+    "Làm trực tuyến được không?",
+    "Bao lâu nhận thẻ?"
+   ]
+  },
+  "xin xác nhận tình trạng hôn nhân thế nào": {
+   "cau_hoi": "Xin xác nhận tình trạng hôn nhân thế nào?",
+   "answer": "### 🔰 Trình tự thực hiện\n- Nộp hồ sơ tại Trung tâm phục vụ hành chính công phường có thẩm quyền hoặc trực tuyến trên Cổng Dịch vụ công Quốc gia.\n- Cơ quan có thẩm quyền thường là phường nơi bạn thường trú; nếu không có nơi thường trú thì nơi đăng ký tạm trú.\n\n### 📋 Thành phần hồ sơ\n- Tờ khai cấp Giấy xác nhận tình trạng hôn nhân; nộp trực tuyến thì khai theo mẫu điện tử. Bấm nút **Mẫu đơn** để tìm tờ khai.\n- Giấy tờ nhân thân, giấy tờ cư trú nếu cơ quan không tra cứu được dữ liệu.\n- Nếu đã kết hôn trước đây, cung cấp thông tin giấy tờ ly hôn hoặc khai tử của vợ/chồng để cơ quan tra cứu.\n\n### ⚖️ Căn cứ pháp lý\n- Luật Hộ tịch số 60/2014/QH13.\n- Nghị định số 123/2015/NĐ-CP, được sửa đổi, bổ sung bởi Nghị định số 07/2025/NĐ-CP.\n- Nghị định số 120/2025/NĐ-CP; Thông tư số 04/2020/TT-BTP, được sửa đổi, bổ sung bởi Thông tư số 04/2024/TT-BTP.\n\nBạn đã từng kết hôn rồi ly hôn hoặc góa chưa?",
+   "suggestions": [
+    "Chưa từng kết hôn",
+    "Đã kết hôn trước đây"
+   ]
+  },
+  "thủ tục đăng ký khai tử cần những gì": {
+   "cau_hoi": "Thủ tục đăng ký khai tử cần những gì?",
+   "answer": "🔰 **Trình tự thực hiện**\n- Nộp hồ sơ trực tiếp hoặc trực tuyến cho cơ quan cấp xã có thẩm quyền.\n- Cơ quan hộ tịch kiểm tra hồ sơ, đăng ký khai tử và cấp Trích lục khai tử.\n\n📋 **Thành phần hồ sơ**\n- Tờ khai đăng ký khai tử theo mẫu — xem nút **“Mẫu đơn”**.\n- Giấy báo tử hoặc giấy tờ thay thế, tùy trường hợp: giấy của cơ sở y tế; quyết định có hiệu lực của Tòa án; hoặc xác nhận của công an/kết quả giám định pháp y.\n- Giấy tờ tùy thân của người đi đăng ký để đối chiếu; có thể không cần xuất trình nếu thông tin được tra cứu từ cơ sở dữ liệu.\n\n⚖️ **Căn cứ pháp lý**\n- Luật Hộ tịch số 60/2014/QH13.\n- Nghị định số 123/2015/NĐ-CP, được sửa đổi, bổ sung bởi Nghị định số 07/2025/NĐ-CP.\n- Nghị định số 120/2025/NĐ-CP.\n\nNgười mất có Giấy báo tử không?",
+   "suggestions": [
+    "Có giấy báo tử",
+    "Không có giấy báo tử"
+   ]
+  },
+  "đăng ký khai sinh quá hạn cần gì": {
+   "cau_hoi": "Đăng ký khai sinh quá hạn cần gì?",
+   "answer": "🔰 **Trình tự thực hiện**\n- Nộp hồ sơ đăng ký khai sinh tại Trung tâm Phục vụ hành chính công cấp xã có thẩm quyền.\n\n📋 **Thành phần hồ sơ**\n- Tờ khai đăng ký khai sinh.\n- Giấy chứng sinh; nếu không có, nộp xác nhận của người làm chứng hoặc giấy cam đoan về việc sinh.\n- Giấy tờ tùy thân của người đi đăng ký; giấy chứng nhận kết hôn của cha mẹ nếu có.\n\n⚖️ **Căn cứ pháp lý**\n- Luật Hộ tịch số 60/2014/QH13.\n- Nghị định số 123/2015/NĐ-CP, được sửa đổi, bổ sung bởi Nghị định số 07/2025/NĐ-CP; Nghị định số 120/2025/NĐ-CP.\n\nTrẻ sinh tại Việt Nam và cha mẹ đều là công dân Việt Nam phải không?",
+   "suggestions": [
+    "Đúng, cả cha mẹ đều là người Việt",
+    "Có yếu tố nước ngoài"
+   ]
+  },
+  "làm căn cước cho trẻ em thế nào": {
+   "cau_hoi": "Làm căn cước cho trẻ em thế nào?",
+   "answer": "🔰 **Trình tự thực hiện**\n- Bé **dưới 6 tuổi**: người đại diện hợp pháp nộp hồ sơ trực tuyến qua Cổng Dịch vụ công Quốc gia hoặc VNeID; nếu chưa đăng ký khai sinh thì làm thủ tục liên thông đăng ký khai sinh.\n- Bé **từ đủ 6 đến dưới 14 tuổi**: người đại diện hợp pháp đưa bé đến Công an cấp xã để làm thủ tục; bé được chụp ảnh và thu nhận vân tay, ảnh mống mắt.\n\n📋 **Thành phần hồ sơ**\n- Giấy tờ chứng minh người làm thủ tục là đại diện hợp pháp.\n- Nếu thông tin của bé chưa có trong Cơ sở dữ liệu quốc gia về dân cư: giấy tờ pháp lý chứng minh thông tin nhân thân của bé; phiếu cần thiết được lập/kê khai theo hướng dẫn khi làm thủ tục.\n\n⚖️ **Căn cứ pháp lý**\n- Luật Căn cước số 26/2023/QH15, được sửa đổi, bổ sung bởi Luật số 118/2025/QH15.\n- Nghị định số 70/2024/NĐ-CP, được sửa đổi, bổ sung bởi Nghị định số 58/2026/NĐ-CP.\n- Thông tư số 17/2024/TT-BCA, được sửa đổi, bổ sung bởi Thông tư số 53/2025/TT-BCA và Thông tư số 118/2026/TT-BCA.\n\nBé nhà bạn dưới 6 tuổi hay từ đủ 6 tuổi?",
+   "suggestions": [
+    "Dưới 6 tuổi",
+    "Từ đủ 6 đến dưới 14 tuổi"
+   ]
+  },
+  "đăng ký tạm vắng cần gì": {
+   "cau_hoi": "Đăng ký tạm vắng cần gì?",
+   "answer": "🔰 **Trình tự thực hiện**\n- Khai báo qua Cổng Dịch vụ công Quốc gia hoặc VNeID; trường hợp phù hợp có thể dùng kênh liên hệ do cơ quan đăng ký cư trú công bố.\n\n📋 **Thành phần hồ sơ**\n- Thông tin khai báo: họ tên, số định danh cá nhân hoặc hộ chiếu, lý do, thời gian tạm vắng và địa chỉ nơi đến.\n- Nếu thuộc diện đang bị giám sát, quản lý hoặc giáo dục: cần đề nghị khai báo và văn bản đồng ý của cơ quan có thẩm quyền.\n- Thông thường, đi vắng ngắn ngày không thuộc diện phải khai báo; nghĩa vụ áp dụng trong các trường hợp luật định.\n\n⚖️ **Căn cứ pháp lý**\n- Luật Cư trú số 68/2020/QH14, Điều 31 và các văn bản sửa đổi, bổ sung.\n- Thông tư số 116/2026/TT-BCA, Điều 15.\n\nBạn đi xa từ 12 tháng hay thuộc diện đang bị giám sát/quản lý?",
+   "suggestions": [
+    "Đi xa từ 12 tháng",
+    "Đang bị giám sát/quản lý"
+   ]
+  },
+  "xác nhận thông tin cư trú thế nào": {
+   "cau_hoi": "Xác nhận thông tin cư trú thế nào?",
+   "answer": "🔰 **Trình tự thực hiện**\n- Đề nghị qua Cổng Dịch vụ công Quốc gia, VNeID hoặc trực tiếp tại cơ quan đăng ký cư trú (Công an cấp xã); không phụ thuộc nơi cư trú.\n- Xin cho cá nhân thì không cần chủ hộ đồng ý.\n\n⚖️ **Căn cứ pháp lý**\n- Luật Cư trú số 68/2020/QH14, được sửa đổi, bổ sung bởi Luật số 118/2025/QH15; Thông tư số 116/2026/TT-BCA.\n\nBạn xin xác nhận cho cá nhân hay hộ gia đình?",
+   "suggestions": [
+    "Cho cá nhân",
+    "Cho hộ gia đình"
+   ]
+  },
+  "cấp bản sao trích lục khai sinh ở đâu": {
+   "cau_hoi": "Cấp bản sao trích lục khai sinh ở đâu?",
+   "answer": "- Bạn nộp tại **Trung tâm phục vụ hành chính công phường Minh Phụng, 183A Lý Nam Đế**. Có thể nộp trực tuyến qua Cổng Dịch vụ công Quốc gia hoặc ứng dụng VNeID.\n- Căn cứ: Luật Hộ tịch số 60/2014/QH13; Nghị định số 123/2015/NĐ-CP.",
+   "suggestions": [
+    "Cần giấy tờ gì?",
+    "Lệ phí bao nhiêu?",
+    "Mất bao lâu?"
+   ]
+  },
+  "thay đổi, cải chính hộ tịch cần gì": {
+   "cau_hoi": "Thay đổi, cải chính hộ tịch cần gì?",
+   "answer": "🔰 **Trình tự thực hiện**\n- Nộp hồ sơ trực tiếp hoặc trực tuyến tại Trung tâm Phục vụ hành chính công cấp xã có thẩm quyền; UBND cấp xã giải quyết.\n- Cải chính chỉ được giải quyết khi có căn cứ chứng minh thông tin bị sai sót.\n\n📋 **Thành phần hồ sơ**\n- Tờ khai thay đổi, cải chính hộ tịch; có thể bấm nút **“Mẫu đơn”**.\n- Giấy tờ làm căn cứ cho việc thay đổi, cải chính.\n- Giấy tờ tùy thân khi nộp trực tiếp; giấy tờ chứng minh nơi cư trú chỉ cần nếu cơ quan không tra cứu được dữ liệu.\n- Văn bản ủy quyền nếu nhờ người khác nộp.\n\n⚖️ **Căn cứ pháp lý**\n- Luật Hộ tịch số 60/2014/QH13.\n- Nghị định số 123/2015/NĐ-CP; Nghị định số 120/2025/NĐ-CP.\n- Thông tư số 04/2020/TT-BTP.\n\nBạn có yếu tố nước ngoài không?",
+   "suggestions": [
+    "Có",
+    "Không"
+   ]
+  },
+  "đăng ký nhận cha, mẹ, con cần gì": {
+   "cau_hoi": "Đăng ký nhận cha, mẹ, con cần gì?",
+   "answer": "🔰 Trình tự thực hiện\n- Nộp hồ sơ tại Trung tâm phục vụ hành chính công cấp xã hoặc nộp trực tuyến; cơ quan cấp xã tiếp nhận, giải quyết.\n\n📋 Thành phần hồ sơ\n- Tờ khai đăng ký nhận cha, mẹ, con theo mẫu.\n- Giấy xác nhận quan hệ cha, mẹ, con của cơ quan có thẩm quyền; nếu không có, nộp bản cam đoan và thông tin của ít nhất 2 người làm chứng.\n- Giấy tờ tùy thân; giấy tờ chứng minh cư trú nếu cơ quan không tra cứu được dữ liệu.\n\n⚖️ Căn cứ pháp lý\n- Luật Hộ tịch số 60/2014/QH13; Nghị định số 123/2015/NĐ-CP, được sửa đổi bởi Nghị định số 07/2025/NĐ-CP; Nghị định số 120/2025/NĐ-CP.\n\nBạn có yếu tố nước ngoài không?",
+   "suggestions": [
+    "Trong nước",
+    "Có yếu tố nước ngoài"
+   ]
+  },
+  "đăng ký giám hộ cần gì": {
+   "cau_hoi": "Đăng ký giám hộ cần gì?",
+   "answer": "🔰 **Trình tự thực hiện**\n- Nộp hồ sơ tại Trung tâm Phục vụ hành chính công cấp xã có thẩm quyền; có thể nộp trực tiếp, qua bưu chính hoặc trực tuyến.\n\n📋 **Thành phần hồ sơ**\n- Tờ khai đăng ký giám hộ; nếu nộp trực tuyến, điền mẫu điện tử.\n- Giám hộ được cử: văn bản cử người giám hộ. Giám hộ đương nhiên: giấy tờ chứng minh đủ điều kiện; nếu nhiều người cùng đủ điều kiện, cần văn bản thỏa thuận chọn một người.\n- Xuất trình giấy tờ tùy thân; giấy tờ chứng minh nơi cư trú chỉ cần khi cơ quan không tra cứu được dữ liệu. Nếu nhờ người khác nộp, kèm văn bản ủy quyền.\n\n⚖ **Căn cứ pháp lý**\n- Bộ luật Dân sự số 91/2015/QH13; Luật Hộ tịch số 60/2014/QH13.\n- Nghị định số 123/2015/NĐ-CP, được sửa đổi, bổ sung bởi Nghị định số 07/2025/NĐ-CP và Nghị định số 18/2026/NĐ-CP; Nghị định số 120/2025/NĐ-CP.\n\nBạn đăng ký giám hộ được cử hay giám hộ đương nhiên?",
+   "suggestions": [
+    "Giám hộ cử",
+    "Giám hộ đương nhiên"
+   ]
+  },
+  "chứng thực chữ ký cần gì": {
+   "cau_hoi": "Chứng thực chữ ký cần gì?",
+   "answer": "🔰 **Trình tự thực hiện**\n- Đến Trung tâm Phục vụ hành chính công cấp xã; ký giấy tờ trước mặt người thực hiện chứng thực.\n\n📋 **Thành phần hồ sơ**\n- Căn cước điện tử hoặc giấy tờ tùy thân còn giá trị; có thể không cần xuất trình nếu cơ quan tra cứu được thông tin trên cơ sở dữ liệu.\n- Giấy tờ, văn bản cần chứng thực chữ ký; để trống phần chữ ký trước khi đến.\n\n⚖️ **Căn cứ pháp lý**\n- Nghị định số 23/2015/NĐ-CP, được sửa đổi, bổ sung bởi Nghị định số 07/2025/NĐ-CP và Nghị định số 280/2025/NĐ-CP.",
+   "suggestions": [
+    "Lệ phí bao nhiêu?",
+    "Mất bao lâu?",
+    "Nộp ở đâu?"
+   ]
+  },
+  "chứng thực hợp đồng, giao dịch cần gì": {
+   "cau_hoi": "Chứng thực hợp đồng, giao dịch cần gì?",
+   "answer": "🔰 **Trình tự thực hiện**\n- Nộp 01 bộ hồ sơ; các bên ký trước người có thẩm quyền chứng thực.\n- Tại phường Minh Phụng, từ **27/4/2026**, các giao dịch thuộc diện chuyển giao như giao dịch về động sản, đất đai, nhà ở, di chúc được thực hiện tại tổ chức hành nghề công chứng.\n\n📋 **Thành phần hồ sơ**\n- Dự thảo hợp đồng, giao dịch.\n- Giấy tờ nhân thân còn hiệu lực của các bên; giấy tờ chứng minh tư cách đại diện nếu có.\n- Giấy tờ sở hữu, sử dụng tài sản nếu giao dịch liên quan tài sản phải đăng ký.\n\n⚖️ **Căn cứ pháp lý**\n- Nghị định số 23/2015/NĐ-CP, được sửa đổi, bổ sung bởi Nghị định số 07/2025/NĐ-CP và Nghị định số 280/2025/NĐ-CP.\n- Quyết định số 21/2026/QĐ-UBND của UBND Thành phố Hồ Chí Minh.\n\nBạn định làm loại giao dịch nào?",
+   "suggestions": [
+    "Mua bán nhà đất",
+    "Ủy quyền",
+    "Giao dịch động sản"
+   ]
+  },
+  "cấp phiếu lý lịch tư pháp thế nào": {
+   "cau_hoi": "Cấp phiếu lý lịch tư pháp thế nào?",
+   "answer": "🔰 **Trình tự thực hiện**\n- Nếu có tài khoản định danh điện tử mức 2: đăng nhập VNeID hoặc Cổng Dịch vụ công Quốc gia, khai tờ khai điện tử và gửi yêu cầu; nhận Phiếu điện tử.\n- Nếu chưa có định danh mức 2: có thể nộp trực tiếp hoặc qua bưu chính tại cơ quan có thẩm quyền cấp Phiếu lý lịch tư pháp. Người đã có mức 2 muốn nhận bản giấy có thể nhờ người khác hoặc cha, mẹ, vợ, chồng, con, người giám hộ làm thủ tục.\n\n📋 **Thành phần hồ sơ**\n- Tờ khai yêu cầu cấp Phiếu; nộp trực tuyến thì khai tờ khai điện tử, gửi bưu chính thì tờ khai cần chứng thực chữ ký.\n- Nếu ủy quyền cho người ngoài nhóm thân nhân/người giám hộ nêu trên: văn bản ủy quyền được công chứng hoặc chứng thực.\n- Giấy tờ chứng minh thuộc diện miễn, giảm phí (nếu có).\n\n⚖️ **Căn cứ pháp lý**\n- Luật Lý lịch tư pháp số 28/2009/QH12, được sửa đổi, bổ sung bởi Luật số 107/2025/QH15.\n- Nghị định số 216/2026/NĐ-CP.\n- Thông tư số 101/2026/TT-BCA.\n\nBạn đã có tài khoản định danh điện tử mức 2 chưa?",
+   "suggestions": [
+    "Có mức 2",
+    "Chưa có mức 2",
+    "Tôi cần bản giấy"
+   ]
+  },
+  "đăng ký hộ kinh doanh cần gì": {
+   "cau_hoi": "Đăng ký hộ kinh doanh cần gì?",
+   "answer": "🔰 **Trình tự thực hiện**\n- Nộp hồ sơ cho Cơ quan đăng ký kinh doanh cấp xã nơi đặt trụ sở; hồ sơ hợp lệ được giải quyết trong 3 ngày làm việc.\n\n📋 **Thành phần hồ sơ**\n- Đăng ký một mình: Giấy đề nghị đăng ký hộ kinh doanh.\n- Đăng ký cùng thành viên gia đình: thêm văn bản ủy quyền của các thành viên cho một người làm chủ hộ.\n- Có thể bấm nút **“Mẫu đơn”** để tìm mẫu giấy đề nghị.\n\n⚖️ **Căn cứ pháp lý**\n- Nghị định số 168/2025/NĐ-CP về đăng ký doanh nghiệp, Điều 99.\n\nBạn đăng ký một mình hay cùng thành viên gia đình?",
+   "suggestions": [
+    "Đăng ký một mình",
+    "Cùng thành viên gia đình"
+   ]
+  },
+  "cấp lại bằng tốt nghiệp thpt bị mất thế nào": {
+   "cau_hoi": "Cấp lại bằng tốt nghiệp THPT bị mất thế nào?",
+   "answer": "🔰 **Trình tự thực hiện**\n- Bằng gốc bị mất không được cấp lại; bạn đề nghị **cấp bản sao từ sổ gốc**.\n- Nộp trực tuyến, trực tiếp hoặc qua bưu chính đến Sở Giáo dục và Đào tạo TP.HCM, cơ quan quản lý sổ gốc.\n\n📋 **Thành phần hồ sơ**\n- Phiếu đề nghị cấp bản sao từ sổ gốc theo mẫu tại Phụ lục VI Thông tư 10/2026/TT-BGDĐT.\n- Nếu nhờ người khác làm: giấy ủy quyền; người thân đủ điều kiện yêu cầu thay cần giấy tờ chứng minh quan hệ.\n\n⚖️ **Căn cứ pháp lý**\n- Thông tư 10/2026/TT-BGDĐT, hiệu lực từ 15/4/2026, thay thế Thông tư 21/2019/TT-BGDĐT.\n- Nghị định 23/2015/NĐ-CP, được sửa đổi, bổ sung bởi Nghị định 07/2025/NĐ-CP và Nghị định 280/2025/NĐ-CP.",
+   "suggestions": [
+    "Nộp trực tuyến thế nào?",
+    "Có mất phí không?",
+    "Cần bao lâu?"
+   ]
+  },
+  "đổi giấy phép lái xe ở đâu": {
+   "cau_hoi": "Đổi giấy phép lái xe ở đâu?",
+   "answer": "- Bạn có thể nộp tại điểm tiếp nhận hồ sơ của Công an phường/xã trên địa bàn TP.HCM; Phòng CSGT tiếp nhận tại **252 Lý Chính Thắng, phường Nhiêu Lộc**. GPLX quốc tế và hồ sơ sát hạch lại do GPLX quá hạn từ 30 ngày trở lên cần đến địa chỉ này.\n- Nếu cần hỏi trực tiếp tại phường Minh Phụng: Trung tâm phục vụ hành chính công phường, **183A Lý Nam Đế**.\n- Căn cứ: Thông báo của Phòng CSGT Công an TP.HCM đăng ngày 16/09/2026 (không nêu số hiệu).",
+   "suggestions": [
+    "Cần giấy tờ gì?",
+    "Bao lâu nhận bằng?",
+    "Nộp trực tuyến được không?"
+   ]
+  },
+  "trợ cấp xã hội cho người cao tuổi cần gì": {
+   "cau_hoi": "Trợ cấp xã hội cho người cao tuổi cần gì?",
+   "answer": "🔰 **Trình tự thực hiện**\n- Trợ cấp hưu trí xã hội: dành cho công dân Việt Nam từ đủ 75 tuổi; hoặc từ 70 đến dưới 75 tuổi thuộc hộ nghèo/cận nghèo. Người đề nghị không hưởng lương hưu, trợ cấp BHXH hằng tháng, hoặc khoản đang hưởng thấp hơn mức trợ cấp hưu trí xã hội.\n- Trợ cấp xã hội hằng tháng theo diện người cao tuổi: áp dụng cho một số trường hợp người cao tuổi thuộc hộ nghèo, không có người có nghĩa vụ phụng dưỡng hoặc người phụng dưỡng đang hưởng trợ cấp xã hội.\n- Nộp hồ sơ trực tuyến, qua bưu chính hoặc trực tiếp tại Bộ phận Một cửa. Chủ tịch UBND cấp xã xem xét, quyết định trong 7 ngày làm việc.\n\n📋 **Thành phần hồ sơ**\n- Tờ khai đề nghị trợ cấp xã hội, trợ cấp hưu trí xã hội — Mẫu số 01; người giám hộ có thể kê khai. Bấm nút **“Mẫu đơn”** trên thanh công cụ để tìm mẫu.\n\n⚖️ **Căn cứ pháp lý**\n- Luật Bảo hiểm xã hội số 41/2024/QH15; Nghị định số 176/2025/NĐ-CP; Nghị định số 335/2026/NĐ-CP.\n- Nghị định số 335/2026/NĐ-CP có hiệu lực từ **05/10/2026**; Nghị định số 20/2021/NĐ-CP và Nghị định số 76/2024/NĐ-CP đã hết hiệu lực từ ngày này.\n\nBạn đang hỏi diện hưu trí xã hội hay diện người cao tuổi nghèo không có người phụng dưỡng?",
+   "suggestions": [
+    "Hưu trí xã hội",
+    "Hộ nghèo, không người phụng dưỡng",
+    "Xin kiểm tra điều kiện"
+   ]
+  },
+  "cấp lại thẻ bhyt bị mất thế nào": {
+   "cau_hoi": "Cấp lại thẻ BHYT bị mất thế nào?",
+   "answer": "🔰 **Trình tự thực hiện**\n- Nộp đề nghị cấp lại qua Cổng Dịch vụ công Quốc gia, ứng dụng BHXH, trực tiếp hoặc qua bưu chính đến cơ quan BHXH.\n- Thẻ được cấp lại trong 7 ngày làm việc; trong thời gian chờ, bạn vẫn được hưởng quyền lợi BHYT.\n- Tra hạn thẻ, bấm nút “Tra cứu BHYT”.\n\n📋 **Thành phần hồ sơ**\n- Đơn đề nghị cấp lại thẻ BHYT; kê khai theo mẫu của cơ quan BHXH hoặc trên hệ thống trực tuyến.\n\n⚖️ **Căn cứ pháp lý**\n- Luật Bảo hiểm y tế số 25/2008/QH12, được sửa đổi, bổ sung bởi Luật số 51/2024/QH15.\n- Nghị định số 188/2025/NĐ-CP.",
+   "suggestions": [
+    "Nộp trực tuyến ra sao?",
+    "Có mất phí không?",
+    "Dùng BHYT khi chờ thẻ thế nào?"
+   ]
+  }
+ }
+}

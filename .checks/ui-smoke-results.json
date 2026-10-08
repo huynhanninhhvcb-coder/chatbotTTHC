@@ -182,6 +182,13 @@
       "ok": true
     },
     {
+      "name": "welcome sample questions render, send, and return after clear",
+      "ok": true,
+      "detail": {
+        "count": 8
+      }
+    },
+    {
       "name": "normal motion entrance settles with visible voice invitation",
       "ok": true,
       "detail": [

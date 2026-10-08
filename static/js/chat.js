@@ -317,12 +317,17 @@ function parseSuggestions(json) {
 
 function resetToWelcome() {
   chatMessages.replaceChildren();
-  renderMessage({
+  const welcome = renderMessage({
     content:
       "Xin chào! Tôi là Trợ lý hành chính công của Phường Minh Phụng.\n\n" +
       "Tôi có thể hỗ trợ tra cứu thủ tục hành chính, hướng dẫn hồ sơ, thời hạn và các thông tin phục vụ người dân. Anh/Chị cần hỗ trợ vấn đề gì?",
     scroll: false,
   });
+  // Nút câu hỏi thường gặp: server đã soạn sẵn câu trả lời nên bấm là có ngay.
+  appendSuggestions(
+    welcome,
+    Array.isArray(window.CAU_HOI_MAU) ? window.CAU_HOI_MAU : [],
+  );
   chatMessages.scrollTop = 0;
 }
 

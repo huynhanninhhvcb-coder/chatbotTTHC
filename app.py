@@ -100,7 +100,7 @@ def _reply(text, context=None):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', cau_hoi_mau=ai_engine.cau_hoi_mau())
 
 
 @app.route('/chat', methods=['POST'])

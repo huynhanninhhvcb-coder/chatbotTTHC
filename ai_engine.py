@@ -27,9 +27,10 @@ fallback sang một câu trả lời xin lỗi + hướng dẫn liên hệ trự
 không được phép "sập" chỉ vì AI lỗi.
 """
 import json
+import os
 import re
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from openai import OpenAI, Timeout
 
@@ -96,6 +97,38 @@ def _cache_set(key, answer):
     if len(_answer_cache) >= CACHE_MAX_ITEMS:
         _answer_cache.pop(next(iter(_answer_cache)), None)  # bỏ mục cũ nhất
     _answer_cache[key] = (time.time(), answer)
+
+
+# Câu trả lời SOẠN SẴN cho câu hỏi thường gặp (do tao_cau_tra_loi_san.py tạo,
+# commit cùng mã nguồn vì ổ đĩa server Render bị xóa mỗi lần deploy/khởi động
+# lại). Trả lời ngay (<1s) khi người dân gõ đúng câu hỏi đó hoặc bấm nút câu
+# hỏi mẫu trên màn hình chào. Quá CAU_TRA_LOI_SAN_HAN_DUNG ngày kể từ ngày soạn
+# thì bỏ qua (quy định có thể đã đổi), chatbot tự tra trực tiếp như bình thường.
+CAU_TRA_LOI_SAN_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cau_tra_loi_san.json')
+CAU_TRA_LOI_SAN_HAN_DUNG = 30  # ngày
+
+
+def _tai_cau_tra_loi_san():
+    try:
+        with open(CAU_TRA_LOI_SAN_FILE, encoding='utf-8') as f:
+            data = json.load(f)
+        data['ngay_tao'] = date.fromisoformat(data['ngay_tao'])
+        return data
+    except (OSError, ValueError, KeyError) as e:
+        print(f"⚠️ Không đọc được câu trả lời soạn sẵn: {e}")
+        return {'ngay_tao': date.min, 'nut': [], 'cau_tra_loi': {}}
+
+
+_san = _tai_cau_tra_loi_san()
+
+
+def _con_han_san():
+    return (_today_vn() - _san['ngay_tao']).days <= CAU_TRA_LOI_SAN_HAN_DUNG
+
+
+def cau_hoi_mau():
+    """Các câu hỏi hiện thành nút trên màn hình chào (rỗng nếu câu trả lời soạn sẵn đã quá hạn)."""
+    return list(_san['nut']) if _con_han_san() else []
 
 # Khi dùng công cụ web_search, model có xu hướng TỰ ĐỘNG chèn trích dẫn dạng
 # "([domain.vn](https://...))" ngay sau câu - đây là hành vi mặc định của
@@ -229,7 +262,7 @@ def _build_messages(question, history, today):
             {"role": "user", "content": question}]
 
 
-def stream_answer(question, history=None):
+def stream_answer(question, history=None, dung_san=True):
     """
     Gọi GPT (kèm công cụ tra cứu web) để trả lời câu hỏi, ưu tiên căn cứ vào
     nguồn thật tìm được trên web thay vì chỉ dựa vào kiến thức sẵn có của
@@ -238,8 +271,18 @@ def stream_answer(question, history=None):
     câu trả lời. Phần tử cuối (nếu có) bắt đầu bằng SUGGESTIONS_SEPARATOR, theo
     sau là danh sách câu hỏi gợi ý dạng JSON. Không yield gì nếu OpenAI không
     khả dụng/lỗi ngay từ đầu, để app.py tự fallback sang câu trả lời xin lỗi +
-    hướng dẫn liên hệ trực tiếp.
+    hướng dẫn liên hệ trực tiếp. dung_san=False: bỏ qua câu trả lời soạn sẵn
+    (dùng khi tao_cau_tra_loi_san.py soạn lại).
     """
+    # Câu hỏi thường gặp là câu hỏi trọn vẹn, không phụ thuộc ngữ cảnh, nên dùng
+    # câu trả lời soạn sẵn kể cả giữa cuộc hội thoại (VD bấm nút câu hỏi mẫu).
+    san = _san['cau_tra_loi'].get(_cache_key(question)) if dung_san and _con_han_san() else None
+    if san:
+        yield san['answer']
+        if san['suggestions']:
+            yield SUGGESTIONS_SEPARATOR + json.dumps(san['suggestions'], ensure_ascii=False)
+        return
+
     if not client:
         return
 
