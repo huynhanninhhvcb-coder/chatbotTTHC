@@ -1,192 +1,272 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mẫu đơn, tờ khai - Phường Minh Phụng</title>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <title>Mẫu đơn, tờ khai | Phường Minh Phụng</title>
+    <link rel="icon" href="{{ url_for('static', filename='images/logo-minh-phung.png') }}">
+    <!-- Màu, chữ, nền và kiểu nút lấy theo trang chatbot (static/css/chat.css) để hai trang đồng bộ. -->
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
         :root {
-            --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
-            --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-            --font-mono: 'JetBrains Mono', ui-monospace, monospace;
-            --color-bg: #F7F8F8;
-            --color-surface: #FFFFFF;
-            --color-border: #E1E5E8;
-            --color-navy: #0A2540;
-            --color-muted: #68737D;
-            --color-accent-1: #B65A38;
-            --color-accent-2: #A95234;
-            --color-accent-soft: #FBEFE9;
-            --radius-sm: 8px;
-            --radius-md: 14px;
-            --radius-lg: 20px;
-            --shadow-card: 0 9px 26px rgba(10, 37, 64, 0.07);
-            --ease: cubic-bezier(.4, 0, .2, 1);
+            --red: #ec1625;
+            --red-dark: #ce0c1b;
+            --ink: #252838;
+            --muted: #858895;
+            --font: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            --ease: cubic-bezier(0.22, 0.8, 0.35, 1);
         }
-
+        * { box-sizing: border-box; }
         body {
-            font-family: var(--font-sans);
-            background: var(--color-bg);
-            color: var(--color-navy);
+            position: relative;
+            display: flex;
             min-height: 100vh;
-            padding: 40px 20px;
+            min-height: 100dvh;
+            justify-content: center;
+            align-items: flex-start;
+            margin: 0;
+            padding: 20px;
+            color: var(--ink);
+            background: radial-gradient(ellipse at 20% 20%, #fff, #fff8f9 65%, #fff0f2) fixed;
+            font-family: var(--font);
+            -webkit-font-smoothing: antialiased;
         }
+        body::before {
+            position: fixed;
+            bottom: -160px;
+            left: -5%;
+            z-index: -1;
+            width: 115%;
+            height: 240px;
+            background: var(--red);
+            transform: rotate(-5deg);
+            content: "";
+        }
+        body::after {
+            position: fixed;
+            right: -70px;
+            bottom: 45px;
+            z-index: -1;
+            width: 210px;
+            height: 170px;
+            background: #ffda68;
+            clip-path: polygon(100% 0, 100% 100%, 0 100%);
+            content: "";
+        }
+        svg { display: block; }
+        a { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+        a:focus-visible { outline: 3px solid #e8a51c; outline-offset: 3px; }
 
-        .container { max-width: 1000px; margin: 0 auto; }
+        .app-shell {
+            position: relative;
+            width: min(100%, 900px);
+            min-height: calc(100vh - 40px);
+            min-height: calc(100dvh - 40px);
+            overflow: hidden;
+            padding: 21px 30px 28px;
+            border: 1px solid #f2e9ea;
+            border-radius: 28px;
+            background: #fff;
+            box-shadow: 0 18px 60px #44252f10, 0 3px 12px #44252f05;
+        }
+        /* Hai hình thoi vàng nhạt trang trí, giống vùng hội thoại của trang chatbot. */
+        .app-shell::before,
+        .app-shell::after {
+            position: absolute;
+            z-index: 0;
+            background: #fff0bd;
+            transform: rotate(45deg);
+            content: "";
+            pointer-events: none;
+        }
+        .app-shell::before { top: 42%; right: -75px; width: 150px; height: 150px; border-radius: 22px; }
+        .app-shell::after { bottom: 12%; left: -46px; width: 78px; height: 78px; border-radius: 14px; background: #fff2c7; }
+        .app-shell > * { position: relative; z-index: 1; }
 
-        .header { margin-bottom: 28px; }
-
-        .eyebrow {
-            display: inline-flex;
+        .brand-row {
+            display: flex;
             align-items: center;
-            gap: 6px;
-            padding: 5px 11px;
-            border-radius: 7px;
-            background: var(--color-accent-soft);
-            color: var(--color-accent-2);
-            font-family: var(--font-mono);
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            margin-bottom: 14px;
+            justify-content: space-between;
+            gap: 16px;
+            animation: enter 0.38s var(--ease) both;
         }
+        .brand-identity { display: block; min-width: 0; width: min(75%, 370px); }
+        .brand-logo { display: block; width: 100%; height: auto; }
+        .round-btn {
+            display: grid;
+            width: 44px;
+            height: 44px;
+            flex: none;
+            place-items: center;
+            border-radius: 50%;
+            color: #454752;
+            background: #f3f4f6;
+            transition: color 0.16s, background 0.16s;
+        }
+        .round-btn:hover { color: var(--red); background: #ffe9ec; }
+        .round-btn svg { width: 22px; height: 22px; }
 
-        .header h1 {
-            font-family: var(--font-display);
+        .page-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 12px;
+            animation: enter 0.38s 0.04s var(--ease) both;
+        }
+        .page-heading h1 {
+            margin: 0;
+            color: var(--red);
+            font-size: 27px;
             font-weight: 700;
-            font-size: 30px;
-            letter-spacing: -0.02em;
+            letter-spacing: -0.5px;
+            line-height: 1.3;
         }
-
-        .header p {
-            margin-top: 8px;
-            color: var(--color-muted);
-            font-size: 14px;
-        }
+        .page-heading .count { flex: none; margin: 0; color: #838693; font-size: 12px; white-space: nowrap; }
+        .intro { margin: 4px 0 20px; color: var(--muted); font-size: 14px; line-height: 1.5; }
 
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-            gap: 14px;
-            margin-bottom: 28px;
-        }
-
-        .folder-card {
-            background: var(--color-surface);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--color-border);
-            overflow: hidden;
-            transition: all 0.2s var(--ease);
-        }
-        .folder-card:hover {
-            border-color: var(--color-accent-2);
-            box-shadow: var(--shadow-card);
-            transform: translateY(-2px);
-        }
-
-        .folder-btn {
-            display: flex;
-            align-items: center;
-            padding: 16px;
-            background: none;
-            border: none;
-            width: 100%;
-            text-align: left;
-            cursor: pointer;
-            font-family: var(--font-sans);
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--color-navy);
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
             gap: 13px;
         }
-        .folder-icon {
-            font-size: 1.5rem;
-            width: 40px;
-            height: 40px;
-            border-radius: var(--radius-sm);
-            background: var(--color-accent-soft);
+        .form-card {
             display: flex;
+            min-height: 62px;
             align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-        .folder-name { flex: 1; color: var(--color-accent-2); }
-
-        .back-btn {
-            display: inline-block;
-            background: var(--color-surface);
-            color: var(--color-accent-2);
-            border: 1.5px solid var(--color-accent-2);
-            padding: 9px 20px;
-            border-radius: var(--radius-sm);
+            gap: 12px;
+            padding: 11px 14px;
+            border: 1px solid #ffe0e4;
+            border-radius: 17px;
+            color: #292733;
+            background: linear-gradient(130deg, #fff5f6, #fff0f2);
+            font-size: 15px;
+            font-weight: 650;
+            line-height: 1.35;
             text-decoration: none;
-            font-weight: 700;
-            font-size: 13px;
-            transition: all 0.2s var(--ease);
+            transition: border-color 0.16s, background 0.16s, transform 0.16s;
+            animation: enter 0.38s var(--ease) backwards;
         }
-        .back-btn:hover { background: var(--color-accent-2); color: #fff; }
+        .form-card:hover { border-color: #f8b1b9; background: #ffe9ec; }
+        .form-card:active { transform: scale(0.98); }
+        .form-icon {
+            display: grid;
+            width: 38px;
+            height: 38px;
+            flex: none;
+            place-items: center;
+            border-radius: 12px;
+            color: var(--red);
+            background: #fff;
+            box-shadow: 0 2px 6px #ec162512;
+        }
+        .form-icon svg { width: 22px; height: 22px; }
+        .form-name { flex: 1; min-width: 0; }
+        .open-icon { width: 17px; height: 17px; flex: none; color: #c9a3a8; transition: color 0.16s, transform 0.16s; }
+        .form-card:hover .open-icon { color: var(--red); transform: translate(2px, -2px); }
 
-        .error-message {
-            background: #FBEFE9;
-            color: #8A4A2E;
-            padding: 15px;
-            border-radius: var(--radius-md);
-            text-align: center;
-            margin: 20px 0;
-            font-weight: 500;
-            font-size: 13.5px;
+        .notice {
+            grid-column: 1 / -1;
+            margin: 0;
+            padding: 16px 18px;
+            border: 1px solid #ffe0e4;
+            border-radius: 17px;
+            color: var(--red-dark);
+            background: #fff2f3;
+            font-size: 14px;
+            line-height: 1.5;
         }
 
-        .center { text-align: center; }
+        .back-row { display: flex; justify-content: center; margin-top: 26px; }
+        .back-btn {
+            display: inline-flex;
+            min-height: 46px;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 22px;
+            border-radius: 999px;
+            color: #fff;
+            background: var(--red);
+            box-shadow: 0 6px 16px #ec162533;
+            font-size: 15px;
+            font-weight: 650;
+            text-decoration: none;
+            transition: background 0.16s, transform 0.16s;
+        }
+        .back-btn:hover { background: var(--red-dark); }
+        .back-btn:active { transform: scale(0.96); }
+        .back-btn svg { width: 18px; height: 18px; }
+
+        @keyframes enter {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: none; }
+        }
 
         @media (max-width: 600px) {
-            .header h1 { font-size: 24px; }
-            .grid { grid-template-columns: 1fr; }
+            body { padding: 0; background: #fff; }
+            body::before, body::after { display: none; }
+            .app-shell {
+                width: 100%;
+                min-height: 100vh;
+                min-height: 100dvh;
+                padding: max(16px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+                border: 0;
+                border-radius: 0;
+                box-shadow: none;
+            }
+            .brand-row { gap: 12px; }
+            .brand-identity { width: min(calc(100% - 48px), 280px); }
+            .round-btn { width: 36px; height: 36px; }
+            .round-btn svg { width: 19px; height: 19px; }
+            .page-heading h1 { font-size: 23px; }
+            .grid { grid-template-columns: 1fr; gap: 10px; }
+            .form-card { min-height: 58px; font-size: 14.5px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation: none !important; transition: none !important; }
         }
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="header">
-        <span class="eyebrow">● DỊCH VỤ HỖ TRỢ</span>
-        <h1>Mẫu đơn, tờ khai</h1>
-        <p>Chọn loại mẫu đơn bạn cần tải về</p>
-    </div>
-
-    {% if error %}
-    <div class="error-message">
-        ⚠️ {{ error }}<br>
-        Vui lòng kiểm tra kết nối hoặc thử lại sau.
-    </div>
-    {% endif %}
-
-    <div class="grid">
-        {% for folder in folders %}
-        <div class="folder-card">
-            <button class="folder-btn" onclick="window.open('https://drive.google.com/drive/folders/{{ folder.id }}', '_blank')">
-                <span class="folder-icon">📁</span>
-                <span class="folder-name">{{ folder.name }}</span>
-            </button>
+<div class="app-shell">
+    <header>
+        <div class="brand-row">
+            <a class="brand-identity" href="/" aria-label="Về trợ lý hành chính công phường Minh Phụng">
+                <img class="brand-logo" src="{{ url_for('static', filename='images/logo-minh-phung.png') }}" width="816" height="195" alt="Trung tâm phục vụ hành chính công phường Minh Phụng – Hành chính phục vụ">
+            </a>
+            <a class="round-btn" href="/" aria-label="Quay lại trợ lý" title="Quay lại trợ lý">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+            </a>
         </div>
+        <div class="page-heading">
+            <h1>Mẫu đơn, tờ khai</h1>
+            {% if folders %}<p class="count">{{ folders|length }} nhóm mẫu</p>{% endif %}
+        </div>
+        <p class="intro">Chọn nhóm mẫu đơn để mở thư mục và tải mẫu về.</p>
+    </header>
+
+    <main class="grid">
+        {% if error %}
+        <p class="notice">⚠️ Chưa tải được danh sách mẫu đơn. Bạn vui lòng thử lại sau ít phút.</p>
+        {% endif %}
+        {% for folder in folders %}
+        <a class="form-card" href="https://drive.google.com/drive/folders/{{ folder.id }}" target="_blank" rel="noopener" style="animation-delay: {{ '%.2f'|format(0.06 + loop.index0 * 0.03) }}s">
+            <span class="form-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z"/><path d="M14 2v6h6M8 12h8M8 16h8M8 19h5" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span class="form-name">{{ folder.name }}</span>
+            <svg class="open-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg>
+        </a>
         {% else %}
             {% if not error %}
-            <div class="error-message">
-                📭 Không tìm thấy folder mẫu đơn nào. Hãy đảm bảo thư mục được chia sẻ công khai.
-            </div>
+            <p class="notice">📭 Hiện chưa có mẫu đơn nào. Bạn vui lòng quay lại sau.</p>
             {% endif %}
         {% endfor %}
-    </div>
+    </main>
 
-    <div class="center">
-        <a href="/" class="back-btn">← Quay lại chatbot</a>
+    <div class="back-row">
+        <a class="back-btn" href="/">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+            Quay lại trợ lý
+        </a>
     </div>
 </div>
 </body>

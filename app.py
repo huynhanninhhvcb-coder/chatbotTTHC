@@ -173,12 +173,14 @@ def mau_don():
             'key': GOOGLE_DRIVE_API_KEY,
             'fields': 'files(id, name)'
         }
-        resp = requests.get(GOOGLE_DRIVE_API_URL, params=params)
+        resp = requests.get(GOOGLE_DRIVE_API_URL, params=params, timeout=15)
         resp.raise_for_status()
         data = resp.json()
         folders = data.get('files', [])
     except Exception as e:
-        error = f"Không thể tải danh sách mẫu đơn: {str(e)}"
+        # Chỉ ghi chi tiết vào log: thông báo lỗi của requests có cả URL kèm API key.
+        print(f"⚠️ Không thể tải danh sách mẫu đơn: {e}")
+        error = True
     return render_template('mau_don.html', folders=folders, error=error)
 if __name__ == '__main__':
     app.run(debug=True)
