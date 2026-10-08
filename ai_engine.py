@@ -36,7 +36,7 @@ import threading
 import time
 from datetime import datetime, timedelta, timezone
 
-from openai import OpenAI
+from openai import OpenAI, Timeout
 
 from config import OPENAI_API_KEY, CHAT_MODEL, FALLBACK_CHAT_MODEL, WARD_OFFICE_ADDRESS
 import tailieu
@@ -44,7 +44,11 @@ import tailieu
 # Mặc định thư viện OpenAI chờ tới 10 phút và tự thử lại 2 lần mỗi lượt gọi: lỗi
 # mạng/vượt giới hạn có thể khiến người dùng chờ rất lâu. Thử lại 1 lần rồi
 # chuyển sang model dự phòng (xem stream_answer) nhanh hơn nhiều.
-client = OpenAI(api_key=OPENAI_API_KEY, timeout=60, max_retries=1) if OPENAI_API_KEY else None
+# Kết nối tới OpenAI bình thường mất <1s, nên chờ kết nối tối đa 5s; khi stream,
+# OpenAI gửi sự kiện cách nhau vài giây (kể cả lúc đang tra web), nên 30s không
+# nhận được gì coi như kẹt. Trước đây đặt chung 60s: đo trên Render 10/2026 có
+# câu hỏi treo >150s không nhận được chữ nào (60s x 2 lần thử x 2 model).
+client = OpenAI(api_key=OPENAI_API_KEY, timeout=Timeout(30, connect=5), max_retries=1) if OPENAI_API_KEY else None
 tailieu.phien_ban()  # nạp sẵn kho PDF khi server khởi động, người hỏi đầu tiên không phải chờ
 
 

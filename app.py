@@ -1,3 +1,6 @@
+import queue
+import threading
+
 from flask import Flask, Response, render_template, request
 import requests
 
@@ -32,6 +35,31 @@ def _clean_history(raw):
                if isinstance(m, dict) and m.get('role') in ('user', 'assistant')
                and isinstance(m.get('content'), str)]
     return history[-MAX_HISTORY_MESSAGES:]
+
+
+# Chờ dòng đầu tiên của AI tối đa chừng này giây; quá thì trả câu xin lỗi + hướng
+# dẫn liên hệ thay vì để người dân nhìn dấu "..." mãi (bình thường dòng đầu tới
+# sau 3-15s). AI vẫn chạy tiếp ở luồng nền và lưu câu trả lời vào bộ nhớ đệm, nên
+# người dân hỏi lại cùng câu sẽ nhận được ngay.
+FIRST_LINE_DEADLINE = 45
+_HET = object()
+
+
+def _chay_nen(gen):
+    """Chạy generator ở luồng nền, trả về hàng đợi nhận từng phần (kết thúc bằng _HET)."""
+    items = queue.Queue()
+
+    def run():
+        try:
+            for item in gen:
+                items.put(item)
+        except Exception as e:
+            print(f"⚠️ Lỗi khi tạo câu trả lời: {e}")
+        finally:
+            items.put(_HET)
+
+    threading.Thread(target=run, daemon=True).start()
+    return items
 
 
 # ===== Ý CỐ ĐỊNH (trả lời bằng câu soạn sẵn, không gọi AI) =====
@@ -142,12 +170,17 @@ https://sites.google.com/view/phuongminhphung/trang-ch%E1%BB%A7
     # Chờ dòng ĐẦU TIÊN rồi mới trả response: lúc đó mới biết AI có hoạt động
     # không, để chọn giữa stream câu trả lời hay câu trả lời dự phòng. Các dòng
     # sau được stream tới trình duyệt ngay khi AI viết xong từng dòng.
-    answer = ai_engine.stream_answer(cau_hoi, _clean_history(data.get('history')))
-    first = next(answer, None)
-    if first is not None:
+    answer = _chay_nen(ai_engine.stream_answer(cau_hoi, _clean_history(data.get('history'))))
+    try:
+        first = answer.get(timeout=FIRST_LINE_DEADLINE)
+    except queue.Empty:
+        print(f"⚠️ Quá {FIRST_LINE_DEADLINE}s chưa có câu trả lời, trả lời dự phòng: {cau_hoi[:80]!r}", flush=True)
+        first = _HET
+    if first is not _HET:
         def body():
             yield first
-            yield from answer
+            while (item := answer.get()) is not _HET:
+                yield item
         resp = Response(body(), mimetype='text/plain')
         resp.headers['X-Context'] = 'append'
         # Báo proxy (Render/Nginx) không gom cả câu trả lời rồi mới gửi.
