@@ -27,7 +27,7 @@ let isClearing = false;
 let activeRequest = null;
 let conversationVersion = 0;
 // Lịch sử hỏi-đáp gần nhất, gửi kèm mỗi câu hỏi để AI hiểu câu hỏi nối tiếp.
-const MAX_HISTORY_MESSAGES = 6;
+const MAX_HISTORY_MESSAGES = 8; // = MAX_HISTORY_MESSAGES trong app.py
 let chatHistory = [];
 // Server gửi kèm danh sách câu hỏi gợi ý (JSON) sau ký tự này, ở cuối câu
 // trả lời (xem SUGGESTIONS_SEPARATOR trong ai_engine.py).

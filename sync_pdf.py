@@ -1,13 +1,23 @@
 """
-Xây dựng kho tra cứu từ các file PDF trong thutuc_data/ để chatbot tự tìm trích
-đoạn liên quan tới câu hỏi (xem tailieu.py).
+Xây dựng kho tra cứu từ các file tài liệu trong thutuc_data/ để chatbot tự tìm
+trích đoạn liên quan tới câu hỏi (xem tailieu.py).
 
-Cách dùng: chép/xóa/sửa file PDF trong thutuc_data/ rồi chạy
+Cách dùng: chép/xóa/sửa file trong thutuc_data/ rồi chạy
     python sync_pdf.py
 sau đó commit + push file pdf_index.json (server Render đọc kho từ file này).
 
-Với mỗi file PDF mới hoặc đã sửa (so mã băm SHA-256 với lần chạy trước), script:
-  1. Đọc chữ trong PDF. PDF dạng ảnh scan (không có lớp chữ) -> báo lỗi, bỏ qua.
+Các loại file nhận được:
+  - .pdf, .docx, .txt: văn bản pháp luật (luật, nghị định, quyết định công bố thủ
+    tục...). Nhiều PDF văn bản chính thức là ảnh scan không đọc được chữ - khi đó
+    tải bản Word trên thuvienphapluat.vn / vbpl.vn (file .doc thì mở bằng Word rồi
+    "Save As" thành .docx) hoặc chép chữ vào file .txt.
+  - .md: thông tin do phường tự soạn (giờ làm việc, liên hệ, lưu ý khi nộp hồ
+    sơ...), không phải văn bản pháp luật. Dòng "# ..." đầu tiên là tên tài liệu,
+    mỗi mục "## ..." là một đoạn tra cứu; ghi chú <!-- ... --> bị bỏ qua.
+  - File có tên bắt đầu bằng "_" (bản nháp chưa điền xong) được bỏ qua.
+
+Với mỗi file văn bản pháp luật mới hoặc đã sửa (so mã băm SHA-256 với lần chạy trước), script:
+  1. Đọc chữ trong file. PDF dạng ảnh scan (không có lớp chữ) -> báo lỗi, bỏ qua.
   2. Nhờ AI đọc phần đầu và các câu về hiệu lực để lấy thông tin văn bản: số
      hiệu, tên đầy đủ, ngày có hiệu lực, các văn bản bị nó thay thế. Nhờ đó
      chatbot biết văn bản nào đã hết hiệu lực (VD Nghị quyết 32/2025/NQ-HĐND
@@ -26,7 +36,9 @@ import os
 import re
 import struct
 import sys
+import zipfile
 from datetime import date
+from xml.etree import ElementTree
 
 from openai import OpenAI
 
@@ -59,9 +71,34 @@ _DIEM = re.compile(r'[a-zđ]\)\s')
 _PHU_LUC = re.compile(r'(Phụ lục|PHỤ LỤC|Mẫu số)\b')
 
 
+DUOI_FILE = ('.pdf', '.docx', '.txt', '.md')
+_W = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
+
+
 def doc_chu_pdf(path):
     from pypdf import PdfReader  # chỉ cần khi đồng bộ, server không dùng tới
     return '\n'.join(page.extract_text() or '' for page in PdfReader(path).pages)
+
+
+def doc_chu_docx(path):
+    # File .docx là gói zip, chữ nằm trong word/document.xml: mỗi <w:p> là một
+    # đoạn (kể cả đoạn trong ô bảng), chữ nằm trong các <w:t>. Đọc thẳng để khỏi
+    # thêm thư viện. Lưu ý: số thứ tự khoản do Word TỰ ĐÁNH (định dạng danh sách)
+    # không nằm trong chữ nên bị mất - văn bản tải từ thuvienphapluat.vn gõ số tay
+    # nên không bị ảnh hưởng.
+    with zipfile.ZipFile(path) as z:
+        root = ElementTree.fromstring(z.read('word/document.xml'))
+    return '\n'.join(''.join(t.text or '' for t in p.iter(f'{_W}t')) for p in root.iter(f'{_W}p'))
+
+
+def doc_chu(path):
+    ext = os.path.splitext(path)[1].lower()
+    if ext == '.pdf':
+        return doc_chu_pdf(path)
+    if ext == '.docx':
+        return doc_chu_docx(path)
+    with open(path, encoding='utf-8-sig') as f:
+        return f.read()
 
 
 _QUOC_HIEU = re.compile(r'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\s*Độc lập\s*-\s*Tự do\s*-\s*Hạnh phúc\s*')
@@ -194,12 +231,22 @@ _META_SCHEMA = {
     "additionalProperties": False,
 }
 _CAU_HIEU_LUC = re.compile(r'hiệu lực|thay thế|bãi bỏ', re.IGNORECASE)
+# Câu nói về hiệu lực của CHÍNH văn bản ("Luật này có hiệu lực thi hành từ...",
+# "Nghị định này thay thế...", "... hết hiệu lực kể từ ngày Luật này..."). Bộ luật
+# dài có hàng trăm câu kiểu "nghị quyết có hiệu lực kể từ ngày thông qua" và các
+# quy định chuyển tiếp - lấy theo thứ tự xuất hiện thì 4.000 ký tự không chứa nổi
+# điều khoản hiệu lực (gặp 10/2026 với Bộ luật Dân sự, Luật Doanh nghiệp, Luật
+# Kinh doanh bất động sản), nên đưa các câu này lên trước.
+_CAU_HIEU_LUC_CHINH = re.compile(
+    r'này có hiệu lực (thi hành )?(từ|kể từ|sau)|này thay thế|Hiệu lực thi hành|hết hiệu lực (thi hành )?kể từ')
 
 
 def doc_thong_tin(client, text):
     lines = _ghep_dong(text)
     dau = '\n'.join(lines)[:2500]
-    hieu_luc = '\n'.join(line for line in lines if _CAU_HIEU_LUC.search(line))[:4000]
+    cau = [line for line in lines if _CAU_HIEU_LUC.search(line)]
+    hieu_luc = '\n'.join([c for c in cau if _CAU_HIEU_LUC_CHINH.search(c)] +
+                         [c for c in cau if not _CAU_HIEU_LUC_CHINH.search(c)])[:4000]
     resp = client.responses.create(
         model=CHAT_MODEL,
         reasoning={"effort": "low"},
@@ -262,13 +309,44 @@ def _sha256(path):
     return h.hexdigest()
 
 
+def chia_muc(text):
+    """
+    Chia file .md tự soạn theo các mục "## ...", mỗi mục chia tiếp thành đoạn
+    ngắn (tiêu đề mục lặp lại ở đầu mỗi đoạn). Trả về (tên tài liệu, khối) với
+    khối cùng dạng chia_doan.
+    """
+    lines = [line.strip() for line in re.sub(r'<!--.*?-->', '', text, flags=re.DOTALL).splitlines()]
+    lines = [line for line in lines if line]
+    ten = next((line[2:].strip() for line in lines if line.startswith('# ')), None)
+    blocks, current = [], []
+    for line in lines:
+        if line.startswith('# '):
+            continue
+        if line.startswith('##') and current:
+            blocks.append(current)
+            current = []
+        current.append(line)
+    if current:
+        blocks.append(current)
+    return ten, [('\n'.join(block), ['\n'.join(block)] if len('\n'.join(block)) <= DOAN_MAX_CHARS
+                  else _chia_nhom(block, [], [])) for block in blocks]
+
+
 def xu_ly_file(client, path):
-    """Đọc, lấy thông tin, chia đoạn, tính vector cho một file PDF. Lỗi -> ValueError."""
-    text = doc_chu_pdf(path)
-    if len(text.strip()) < 200:
-        raise ValueError("PDF dạng ảnh scan, không có lớp chữ - cần chuyển sang PDF có chữ (OCR) trước")
-    meta = doc_thong_tin(client, text)
-    blocks = chia_doan(text)
+    """Đọc, lấy thông tin, chia đoạn, tính vector cho một file tài liệu. Lỗi -> ValueError."""
+    text = doc_chu(path)
+    if path.lower().endswith('.md'):
+        ten, blocks = chia_muc(text)
+        if not ten or not blocks:
+            raise ValueError('file .md cần một dòng tiêu đề "# ..." và ít nhất một mục nội dung')
+        # Thông tin tự soạn: không có số hiệu/hiệu lực, luôn được dùng (xem tailieu.tinh_trang).
+        meta = {'loai': 'thong_tin', 'so_hieu': None, 'ten': ten, 'ngay_ban_hanh': None,
+                'hieu_luc_tu': None, 'thay_the': []}
+    else:
+        if len(text.strip()) < 200:
+            raise ValueError("file không có chữ (PDF dạng ảnh scan?) - cần bản có chữ: PDF đã OCR, .docx hoặc .txt")
+        meta = doc_thong_tin(client, text)
+        blocks = chia_doan(text)
     # Gắn tên văn bản vào trước mỗi đoạn khi tính vector, để câu hỏi nhắc tới chủ
     # đề/số hiệu văn bản (VD "chính sách dân số", "Nghị quyết 32") vẫn tìm đúng đoạn.
     vectors = iter(tinh_vector(client, [f"{meta['ten']}\n{chunk}" for _, chunks in blocks for chunk in chunks]))
@@ -297,7 +375,8 @@ def main():
 
     local = {name: _sha256(os.path.join(PDF_DIR, name))
              for name in sorted(os.listdir(PDF_DIR))
-             if name.lower().endswith('.pdf') and os.path.isfile(os.path.join(PDF_DIR, name))}
+             if name.lower().endswith(DUOI_FILE) and not name.startswith('_')
+             and os.path.isfile(os.path.join(PDF_DIR, name))}
     removed = [n for n in old_files if n not in local]
     added = changed = unchanged = 0
     failed = []
@@ -319,9 +398,9 @@ def main():
             changed += 1
         else:
             added += 1
+        loai = 'thông tin tự soạn' if data.get('loai') == 'thong_tin' else f"hiệu lực từ {data['hieu_luc_tu'] or '?'}"
         print(f"✅ {'Đã cập nhật' if entry else 'Đã thêm'}: {name} - {data['ten'][:90]} "
-              f"(hiệu lực từ {data['hieu_luc_tu'] or '?'}, "
-              f"{sum(len(d['doan']) for d in data['dieu'])} đoạn)")
+              f"({loai}, {sum(len(d['doan']) for d in data['dieu'])} đoạn)")
     for name in removed:
         print(f"🗑️  Đã xóa: {name}")
     _save_index(index)

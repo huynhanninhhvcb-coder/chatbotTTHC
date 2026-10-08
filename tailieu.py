@@ -105,7 +105,9 @@ def tinh_trang(files, today):
     result = {}
     for name, f in files.items():
         moi = bi_thay.get(_chuan_so_hieu(f.get('so_hieu')))
-        if moi:
+        if f.get('loai') == 'thong_tin':  # file .md phường tự soạn (xem sync_pdf.chia_muc)
+            result[name] = (True, "thông tin do phường cung cấp")
+        elif moi:
             tu = f" từ {_ngay(moi['hieu_luc_tu'])}" if moi.get('hieu_luc_tu') else ''
             result[name] = (False, f"đã hết hiệu lực, bị thay thế bởi {moi.get('so_hieu')}{tu}")
         elif f.get('hieu_luc_tu') and f['hieu_luc_tu'] > today:
@@ -116,7 +118,33 @@ def tinh_trang(files, today):
     return result
 
 
-def xep_hang(client, query, doan):
+# Câu hỏi nêu thẳng số hiệu văn bản / số Điều ("Điều 11 Nghị định 335/2026/NĐ-CP",
+# "điều 24 nghị định 118"): vector ngữ nghĩa gần như không phân biệt được các con
+# số - đo 10/2026 vẫn tìm đúng văn bản nhưng Điều được hỏi xếp tận thứ 8, thứ 34
+# nên có khi không lọt vào trích đoạn. Vì vậy cộng điểm cho các đoạn của văn bản
+# được nêu số hiệu, và đưa Điều được hỏi của văn bản đó lên đầu. (Chạy trên câu
+# hỏi đã bỏ dấu: "nghị định 118/2025/nđ-cp" -> "nghi dinh 118/2025/nd-cp".)
+_VAN_BAN_HOI = re.compile(
+    r'\b(\d+)/(\d{4})\b'
+    r'|\b(?:nghi dinh|nghi quyet|thong tu|phap lenh|quyet dinh|luat|nd|nq|tt|qd)\s+(?:so\s+)?(\d+)\b(?!/)')
+_DIEU_HOI = re.compile(r'\bdieu\s+(\d+[a-z]?)\b')
+DIEM_VAN_BAN_DUOC_HOI = 0.05
+DIEM_DIEU_DUOC_HOI = 1.0
+
+
+def _van_ban_duoc_hoi(query, files):
+    """Tên các file có số hiệu được nhắc tới trong câu hỏi ("118/2025", "nghị định 118")."""
+    names = set()
+    for m in _VAN_BAN_HOI.finditer(remove_accents(query)):
+        so, nam = (m.group(1), m.group(2)) if m.group(1) else (m.group(3), None)
+        for name, f in files.items():
+            parts = _chuan_so_hieu(f.get('so_hieu')).split('/')  # ["118", "2025", "NDCP"]
+            if parts[0].lstrip('0') == so.lstrip('0') and (nam is None or parts[1:2] == [nam]):
+                names.add(name)
+    return names
+
+
+def xep_hang(client, query, doan, files=None):
     """[(điểm, tên file, vị trí, chữ đưa cho AI), ...] từ khớp nhất. Lỗi API -> ném lỗi."""
     # Bình thường chỉ ~0,2s. Mạng chập chờn thì bỏ qua PDF sau ~3s (chatbot vẫn trả
     # lời bằng tra cứu web) thay vì để người dùng chờ theo thời gian chờ mặc định 10 phút.
@@ -124,7 +152,19 @@ def xep_hang(client, query, doan):
         model=EMBEDDING_MODEL, dimensions=EMBEDDING_DIMENSIONS, input=query).data[0].embedding
     norm = math.sqrt(_dot(q, q)) or 1.0
     q = [x / norm for x in q]
-    return sorted(((_dot(q, vec), name, pos, text) for name, pos, text, vec in doan), reverse=True)
+    van_ban = _van_ban_duoc_hoi(query, files or {})
+    so_dieu = _DIEU_HOI.findall(remove_accents(query))
+    dieu = re.compile(r'Điều (?:%s)\.' % '|'.join(so_dieu)) if van_ban and so_dieu else None
+
+    def diem(name, text, vec):
+        score = _dot(q, vec)
+        if name in van_ban:
+            score += DIEM_VAN_BAN_DUOC_HOI
+            if dieu and dieu.match(text):
+                score += DIEM_DIEU_DUOC_HOI
+        return score
+
+    return sorted(((diem(name, text, vec), name, pos, text) for name, pos, text, vec in doan), reverse=True)
 
 
 def tim_trich_doan(client, query, today):
@@ -137,21 +177,24 @@ def tim_trich_doan(client, query, today):
     if not doan:
         return '', 0
     try:
-        ranked = xep_hang(client, query, doan)
+        ranked = xep_hang(client, query, doan, files)
     except Exception as e:
         print(f"⚠️ Lỗi tra cứu tài liệu PDF: {e}")
         return '', 0
     status = tinh_trang(files, today)
 
-    chosen, het_hieu_luc, seen, total, best = [], {}, set(), 0, 0
-    for score, name, pos, text in ranked[:MAX_KHOP]:
-        if score < MIN_SCORE:
+    chosen, het_hieu_luc, seen, total, best, xet = [], {}, set(), 0, 0, 0
+    for score, name, pos, text in ranked:
+        if score < MIN_SCORE or xet >= MAX_KHOP:
             break
         if not status[name][0]:
             # Không trích quy định cũ, chỉ báo cho AI biết văn bản đó đã hết hiệu
-            # lực (người dân có thể đang hỏi đúng về văn bản này).
+            # lực (người dân có thể đang hỏi đúng về văn bản này). Đoạn của văn bản
+            # cũ không tính vào MAX_KHOP: hỏi đúng số hiệu văn bản cũ thì các đoạn
+            # của nó được cộng điểm, chiếm hết chỗ của văn bản mới thay thế nó.
             het_hieu_luc[name] = status[name][1]
             continue
+        xet += 1
         best = max(best, score)
         if text in seen or total + len(text) > MAX_TRICH_DOAN_CHARS:
             continue  # nhiều đoạn cùng một Điều -> chỉ đưa Điều đó một lần

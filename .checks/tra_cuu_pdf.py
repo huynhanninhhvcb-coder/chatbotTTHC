@@ -38,10 +38,19 @@ CO_TRONG_KHO = [
     ("học sinh hộ cận nghèo được giảm học phí bao nhiêu phần trăm", "238/2025", "giảm 50%|giảm học phí"),
     ("nộp hồ sơ trực tuyến trên Cổng Dịch vụ công quốc gia như thế nào", "118/2025", "trực tuyến"),
     ("Nghị quyết 40/2024/NQ-HĐND còn hiệu lực không?", "32/2025", "ĐÃ HẾT HIỆU LỰC"),
+    # Hỏi thẳng theo số hiệu văn bản / số Điều: vector ngữ nghĩa gần như không phân biệt được các con số.
+    ("Điều 5 Nghị định 118/2025/NĐ-CP quy định gì?", "118/2025", "Những hành vi không được làm"),
+    ("điều 24 nghị định 118 nói về cái gì", "118/2025", "Phương thức nộp phí"),
+    ("Nghị định 335/2026 điều 4", "335/2026", "540.000"),
+    ("Điều 11 Nghị định 335/2026/NĐ-CP", "335/2026", "Hỗ trợ chi phí mai táng"),
+    ("Thủ tục đăng ký khai sinh cần những gì?", "60/2014", "Thủ tục đăng ký khai sinh"),
+    ("đăng ký kết hôn cần giấy tờ gì", "60/2014", "Thủ tục đăng ký kết hôn"),
+    ("người nhà mất được hỗ trợ tiền hỏa táng không", "14/2015", "hỏa táng"),
+    ("đóng bảo hiểm xã hội tự nguyện được hưởng chế độ gì", "41/2024", "tự nguyện"),
+    ("Luật Doanh nghiệp 2014 còn hiệu lực không", "59/2020", "68/2014/QH13 hết hiệu lực"),
 ]
-NGOAI_KHO = ["Thủ tục đăng ký khai sinh cần những gì?", "Đăng ký tạm trú cho người thuê trọ cần giấy tờ gì?",
-             "Chứng thực bản sao từ bản chính lệ phí bao nhiêu?", "cấp lại thẻ căn cước bị mất làm sao",
-             "đăng ký kết hôn cần giấy tờ gì"]
+NGOAI_KHO = ["Đăng ký tạm trú cho người thuê trọ cần giấy tờ gì?",
+             "Chứng thực bản sao từ bản chính lệ phí bao nhiêu?", "cấp lại thẻ căn cước bị mất làm sao"]
 
 
 def main():

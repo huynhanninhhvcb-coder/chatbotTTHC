@@ -16,8 +16,12 @@ app.secret_key = SECRET_KEY
 # thủ tục. Lịch sử do TRÌNH DUYỆT giữ và gửi kèm mỗi câu hỏi (không lưu trong
 # session/cookie được nữa vì câu trả lời được stream: cookie đã gửi đi trước
 # khi có câu trả lời). Server chỉ nhận đúng định dạng và cắt bớt độ dài.
-MAX_HISTORY_MESSAGES = 6
-MAX_HISTORY_CHARS = 600
+# Giữ 4 lượt hỏi-đáp, mỗi tin tối đa 2.000 ký tự. Đo 10/2026 (.checks/danh_gia.py):
+# câu trả lời dài 200-850 ký tự - cắt ở 600 ký tự như trước làm mất phần cuối
+# (thường là mục "Căn cứ pháp lý") của ~1/3 câu trả lời, AI không biết mình vừa
+# nói gì khi người dùng hỏi tiếp "văn bản đó ban hành năm nào".
+MAX_HISTORY_MESSAGES = 8
+MAX_HISTORY_CHARS = 2000
 
 
 def _clean_history(raw):

@@ -123,7 +123,9 @@ def _strip_links_line(line):
     line = _BARE_URL.sub('', line)
     line = _EMPTY_PARENS.sub('', line)
     line = re.sub(r'[ \t]{2,}', ' ', line)
-    return line.rstrip()
+    # Gạch đầu dòng chỉ chứa link (VD "- https://dichvucong.gov.vn") lọc xong còn
+    # trơ dấu "-" -> bỏ luôn dấu đó (đã gặp ở cuối câu trả lời, 10/2026).
+    return '' if re.fullmatch(r'\s*[-*•+]\s*', line) else line.rstrip()
 
 
 # ==================== GỢI Ý CÂU HỎI TIẾP THEO ====================
@@ -166,7 +168,9 @@ _PDF_SOURCE_RULE = f"""TRÍCH ĐOẠN TÀI LIỆU NỘI BỘ của phường (�
    qua. Mỗi nhóm trích đoạn mở đầu bằng [tên văn bản - tình trạng hiệu lực]: mục "Căn cứ pháp lý"
    ghi đúng tên văn bản đó; không áp dụng văn bản đã hết hiệu lực (người dùng hỏi đúng văn bản đó
    thì nói rõ đã hết hiệu lực và văn bản nào thay thế); văn bản chưa có hiệu lực thì nói rõ ngày bắt
-   đầu áp dụng. Nếu trích đoạn đã đủ để trả lời thì trả lời ngay theo trích đoạn, KHÔNG tra web (kể
+   đầu áp dụng. Nhóm ghi "thông tin do phường cung cấp" là thông tin thực tế của phường (giờ làm
+   việc, liên hệ, lưu ý khi nộp hồ sơ...): dùng để trả lời thẳng, KHÔNG ghi vào mục "Căn cứ pháp
+   lý" và không cần khuyên xác minh lại. Nếu trích đoạn đã đủ để trả lời thì trả lời ngay theo trích đoạn, KHÔNG tra web (kể
    cả để kiểm tra lại hay tìm tên văn bản - tên đã ghi sẵn). Chỉ dùng web_search khi trích đoạn THIẾU
    hẳn thông tin người dùng hỏi; khi tra web thì ưu tiên https://dichvucong.gov.vn/
    trước, sau đó mới tới thuvienphapluat.vn, chinhphu.vn, congbao.chinhphu.vn. {_EXTRA_SOURCES}
