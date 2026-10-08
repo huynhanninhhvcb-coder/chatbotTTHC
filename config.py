@@ -7,8 +7,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
 # Địa chỉ tiếp nhận hồ sơ - dùng trong system prompt của AI (để luôn hướng
 # dẫn đúng nơi liên hệ) và trong câu trả lời dự phòng khi OpenAI không khả dụng.
 WARD_OFFICE_NAME = "Trung tâm phục vụ hành chính công phường Minh Phụng"
@@ -35,19 +33,6 @@ CHAT_MODEL = "gpt-6-luna"
 # model nên chuyển sang model khác là trả lời được ngay. gpt-5.6-luna cũng rẻ
 # ($0,20/$1,20 mỗi 1 triệu token) và hỗ trợ web_search.
 FALLBACK_CHAT_MODEL = "gpt-5.6-luna"
-
-# ==================== TÀI LIỆU PDF (nguồn tra cứu nội bộ) ====================
-# Chép file PDF vào thư mục này rồi chạy `python sync_pdf.py` - chatbot sẽ tra
-# trích đoạn trong đó trước (ưu tiên hơn tra cứu web).
-PDF_DIR = os.path.join(BASE_DIR, 'thutuc_data')
-# Kho tra cứu (thông tin văn bản + các đoạn đã chia + vector ngữ nghĩa), do
-# sync_pdf.py ghi và tailieu.py đọc.
-PDF_INDEX_FILE = os.path.join(BASE_DIR, 'pdf_index.json')
-# Model tính vector ngữ nghĩa cho đoạn văn bản và câu hỏi. Rút gọn còn 1024
-# chiều (OpenAI hỗ trợ sẵn) để kho nhỏ và so khớp nhanh mà gần như không giảm
-# độ chính xác. Đổi model/số chiều thì phải chạy lại sync_pdf.py.
-EMBEDDING_MODEL = "text-embedding-3-large"
-EMBEDDING_DIMENSIONS = 1024
 
 if not GOOGLE_DRIVE_API_KEY:
     print("⚠️ Cảnh báo: Chưa cấu hình GOOGLE_DRIVE_API_KEY trong file .env")

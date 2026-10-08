@@ -6,5 +6,4 @@ venv/
 .venv/
 *.log
 .checks/chrome-profile-redesign/
-pdf_index.json.tmp
 .checks/ket_qua_danh_gia.md
