@@ -18,7 +18,7 @@ phường, nên với chi tiết đặc thù của phường Minh Phụng (giờ
 cụ thể...) mà tra cứu web cũng không chắc chắn, AI vẫn phải khuyên người dân
 xác minh trực tiếp tại nơi tiếp nhận thay vì khẳng định bừa.
 
-Không còn tra cứu tài liệu PDF nội bộ (thutuc_data/) - bỏ theo yêu cầu 10/2026
+Không còn tra cứu tài liệu PDF nội bộ - bỏ theo yêu cầu 10/2026
 để mọi câu hỏi đi thẳng tới AI + tra cứu web, trả lời nhanh và đơn giản hơn.
 
 Nguyên tắc quan trọng: stream_answer() PHẢI tự bắt lỗi và không trả về gì khi
