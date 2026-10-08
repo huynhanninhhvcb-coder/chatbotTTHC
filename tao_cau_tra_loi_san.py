@@ -48,7 +48,7 @@ CAU_HOI = [
     "Trợ cấp xã hội cho người cao tuổi cần gì?",
     "Cấp lại thẻ BHYT bị mất thế nào?",
 ]
-NUT_CAU_HOI_MAU = 8
+NUT_CAU_HOI_MAU = 3  # 8 nút chiếm quá nhiều chỗ trên màn hình chào (góp ý 10/2026)
 SO_LUONG_SONG_SONG = 4
 
 # Soạn sẵn không cần nhanh, nên cho AI suy nghĩ kỹ nhất và đọc nhiều nguồn nhất
