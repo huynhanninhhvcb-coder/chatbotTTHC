@@ -1,9 +1,11 @@
 .env
 __pycache__/
-pycache/
 *.pyc
 venv/
 .venv/
 *.log
 .checks/chrome-profile-redesign/
 .checks/ket_qua_danh_gia.md
+# Giấy tờ người dân tải lên và đơn Word tạo ra (dữ liệu cá nhân)
+uploads/
+outputs/

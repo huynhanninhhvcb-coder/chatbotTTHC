@@ -7,15 +7,52 @@
     <meta name="theme-color" content="#ffffff">
     <title>Trợ lý hành chính công | Phường Minh Phụng</title>
     <link rel="icon" href="{{ url_for('static', filename='images/logo-minh-phung.png') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
 </head>
 <body>
-    <div class="app-shell" data-logo-url="{{ url_for('static', filename='images/logo-minh-phung.png') }}">
+    <!-- Nền trang: ảnh trụ sở phường bên trái và dải lụa đỏ - vàng trang trí. -->
+    <div class="backdrop" aria-hidden="true">
+        <div class="backdrop-photo"></div>
+        <!-- Ánh sáng tỏa quanh tòa nhà: hào quang, tia sáng và hạt sáng bay lên. -->
+        <div class="building-glow">
+            <div class="glow-anchor">
+                <span class="glow-rays"></span>
+                <span class="glow-aura"></span>
+                <span class="glow-particles"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span>
+            </div>
+        </div>
+        <svg class="ribbon ribbon-bottom" viewBox="0 0 1600 320" preserveAspectRatio="none" focusable="false">
+            <defs>
+                <linearGradient id="ribbonRed" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c3081a"/><stop offset=".45" stop-color="#ea1424"/><stop offset="1" stop-color="#f53a2a"/></linearGradient>
+                <linearGradient id="ribbonGold" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffd36b"/><stop offset=".5" stop-color="#ffb23a"/><stop offset="1" stop-color="#ffe2a0" stop-opacity=".2"/></linearGradient>
+            </defs>
+            <path d="M0 70C210 118 380 214 640 252c290 42 640 22 960-26v94H0Z" fill="url(#ribbonRed)"/>
+            <path d="M0 52C220 104 392 196 650 236c292 44 626 22 950-24" fill="none" stroke="url(#ribbonGold)" stroke-width="9"/>
+            <path d="M0 112c200 50 360 150 620 186 210 28 450 22 700 0" fill="none" stroke="#ff5b45" stroke-opacity=".45" stroke-width="5"/>
+        </svg>
+        <svg class="ribbon ribbon-side" viewBox="0 0 120 600" preserveAspectRatio="none" focusable="false">
+            <path d="M120 0C70 150 48 330 92 600h28Z" fill="#e8111f"/>
+            <path d="M120 40C80 180 66 350 104 600" fill="none" stroke="#ffc34f" stroke-width="5"/>
+        </svg>
+        <span class="sparkle sparkle-1"></span>
+        <span class="sparkle sparkle-2"></span>
+        <span class="sparkle sparkle-3"></span>
+    </div>
+
+    <div class="app-shell" data-logo-url="{{ url_for('static', filename='images/logo-minh-phung.png') }}" data-avatar-url="{{ url_for('static', filename='images/robot-assistant.webp') }}">
         <header class="app-header">
             <div class="brand-row">
                 <a class="brand-identity" href="/" aria-label="Trang chủ Trung tâm phục vụ hành chính công phường Minh Phụng">
                     <img class="brand-logo" src="{{ url_for('static', filename='images/logo-minh-phung.png') }}" width="816" height="195" alt="Trung tâm phục vụ hành chính công phường Minh Phụng – Hành chính phục vụ">
                 </a>
+                <div class="assistant-heading">
+                    <h1>Trợ lý hành chính công <span class="ai-tag"><span class="ai-mark">AI</span><svg class="ai-sparkle" aria-hidden="true" viewBox="0 0 32 32" focusable="false"><defs><linearGradient id="sparkleGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffc83d"/><stop offset="1" stop-color="#ff7a1a"/></linearGradient></defs><path d="M12 1.5c.9 6.2 2.4 7.8 8.6 8.7-6.2.9-7.7 2.4-8.6 8.6-.9-6.2-2.4-7.7-8.6-8.6 6.2-.9 7.7-2.5 8.6-8.7Z" fill="url(#sparkleGold)"/><path d="M24.5 16.5c.45 3.1 1.2 3.9 4.3 4.3-3.1.45-3.85 1.2-4.3 4.3-.45-3.1-1.2-3.85-4.3-4.3 3.1-.4 3.85-1.2 4.3-4.3Z" fill="url(#sparkleGold)"/></svg></span></h1>
+                    <p>Hỏi nhanh - Giải đáp chuẩn - Đồng hành cùng người dân</p>
+                </div>
+                <p class="online-status"><span class="online-dot" aria-hidden="true"></span>Đang hoạt động</p>
                 <div class="menu-wrap">
                     <button class="menu-btn" id="menuBtn" type="button" aria-label="Tùy chọn hội thoại" aria-expanded="false" aria-controls="chatMenu" title="Tùy chọn hội thoại">
                         <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
@@ -27,13 +64,34 @@
                     </div>
                 </div>
             </div>
-            <div class="assistant-heading"><h1>Trợ lý hành chính công</h1><p><span class="online-dot" aria-hidden="true"></span>Đang hoạt động</p></div>
         </header>
 
         <nav class="service-bar" aria-label="Tiện ích tra cứu nhanh">
-            <button class="service-button" id="bhytBtn" type="button"><svg class="service-icon" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="m12 2-8 3v6c0 5 3.3 8.6 8 11 4.7-2.4 8-6 8-11V5l-8-3Z"/><path d="M12 7v9M8 11.5h8" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round"/></svg><span>Tra cứu BHYT</span></button>
-            <button class="service-button" id="mauDonBtn" type="button"><svg class="service-icon" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z"/><path d="M14 2v6h6M8 12h8M8 16h8M8 19h5" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Mẫu đơn</span></button>
-            <button class="service-button" id="khuPhoBtn" type="button"><svg class="service-icon" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a8 8 0 0 0-8 8c0 6 8 14 8 14s8-8 8-14a8 8 0 0 0-8-8Z"/><circle cx="12" cy="9" r="3" fill="white"/></svg><span>Khu phố</span></button>
+            <button class="service-button" id="bhytBtn" type="button">
+                <span class="service-icon-wrap"><svg class="service-icon" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="m12 2-8 3v6c0 5 3.3 8.6 8 11 4.7-2.4 8-6 8-11V5l-8-3Z"/><path d="M12 7v9M8 11.5h8" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round"/></svg></span>
+                <span class="service-copy"><strong>Tra cứu BHYT</strong><small>Quyền lợi, thủ tục</small></span>
+                <svg class="service-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg>
+            </button>
+            <button class="service-button" id="mauDonBtn" type="button">
+                <span class="service-icon-wrap"><svg class="service-icon" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z"/><path d="M14 2v6h6M8 12h8M8 16h8M8 19h5" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                <span class="service-copy"><strong>Mẫu đơn</strong><small>Tải mẫu, hướng dẫn điền</small></span>
+                <svg class="service-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg>
+            </button>
+            <button class="service-button" id="khuPhoBtn" type="button">
+                <span class="service-icon-wrap"><svg class="service-icon" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a8 8 0 0 0-8 8c0 6 8 14 8 14s8-8 8-14a8 8 0 0 0-8-8Z"/><circle cx="12" cy="9" r="3" fill="white"/></svg></span>
+                <span class="service-copy"><strong>Khu phố</strong><small>Thông tin địa bàn dân cư</small></span>
+                <svg class="service-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg>
+            </button>
+            <button class="service-button" id="dienDonBtn" type="button">
+                <span class="service-icon-wrap"><svg class="service-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M5 2h8.2l5.3 5.3V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" fill="currentColor"/><path d="M13.2 2v5.3h5.3M6.5 11h6.5M6.5 14.5h3.5" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="m19.6 10.9 2.6 2.6-7.4 7.4-3.5.9.9-3.5 7.4-7.4Z" fill="currentColor" stroke="white" stroke-width="1.5" stroke-linejoin="round"/></svg></span>
+                <span class="service-copy"><strong>Điền đơn tự động</strong><small>Điền sẵn, tải về ngay</small></span>
+                <svg class="service-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg>
+            </button>
+            <button class="service-button" id="youtubeBtn" type="button" aria-label="Kênh YouTube của Trung tâm phục vụ hành chính công phường Minh Phụng (mở tab mới)">
+                <span class="service-icon-wrap"><svg class="service-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M21.6 7.2a2.6 2.6 0 0 0-1.8-1.9C18.2 4.9 12 4.9 12 4.9s-6.2 0-7.8.4a2.6 2.6 0 0 0-1.8 1.9C2 8.8 2 12 2 12s0 3.2.4 4.8a2.6 2.6 0 0 0 1.8 1.9c1.6.4 7.8.4 7.8.4s6.2 0 7.8-.4a2.6 2.6 0 0 0 1.8-1.9c.4-1.6.4-4.8.4-4.8s0-3.2-.4-4.8Z" fill="currentColor"/><path d="m10 15.2 5.2-3.2L10 8.8v6.4Z" fill="white"/></svg></span>
+                <span class="service-copy"><strong>Kênh YouTube</strong><small>Video hướng dẫn, tin tức</small></span>
+                <svg class="service-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg>
+            </button>
         </nav>
 
         <main class="conversation" aria-label="Cuộc hội thoại với trợ lý">
@@ -41,22 +99,26 @@
         </main>
 
         <footer class="composer" aria-label="Đặt câu hỏi">
+            <input id="formFileInput" type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" multiple hidden>
             <p class="voice-transcript" id="voiceTranscript" aria-live="polite" hidden></p>
             <div class="composer-row">
                 <div class="input-shell">
-                    <input class="composer-input" id="textInput" type="text" placeholder="Hoặc nhập câu hỏi..." autocomplete="off" aria-label="Nhập câu hỏi cho trợ lý">
-                    <button class="mic-btn" id="micBtn" type="button" aria-label="Nhấn để nói câu hỏi" aria-pressed="false" aria-describedby="micHint" title="Nhấn để nói">
-                        <svg class="mic-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8"/></svg>
-                        <span class="mic-waveform" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
-                    </button>
+                    <button class="attachment-btn" id="attachBtn" type="button" aria-label="Đính kèm tệp giấy tờ (PDF hoặc ảnh)" title="Đính kèm tệp giấy tờ (PDF hoặc ảnh)"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m20.5 11.5-8.8 8.8a6 6 0 0 1-8.5-8.5l9.5-9.5a4 4 0 0 1 5.7 5.7l-9.6 9.5a2 2 0 0 1-2.8-2.8l8.8-8.8"/></svg></button>
+                    <span class="input-divider" aria-hidden="true"></span>
+                    <input class="composer-input" id="textInput" type="text" placeholder="Nhập câu hỏi hoặc sử dụng giọng nói..." autocomplete="off" aria-label="Nhập câu hỏi cho trợ lý">
+                    <span class="voice-wave" aria-hidden="true"><span style="--h:.28"></span><span style="--h:.5"></span><span style="--h:.36"></span><span style="--h:.7"></span><span style="--h:.46"></span><span style="--h:.86"></span><span style="--h:.58"></span><span style="--h:1"></span><span style="--h:.66"></span><span style="--h:.9"></span><span style="--h:.52"></span><span style="--h:.74"></span><span style="--h:.4"></span><span style="--h:.6"></span><span style="--h:.32"></span><span style="--h:.44"></span><span style="--h:.24"></span></span>
                 </div>
+                <button class="mic-btn" id="micBtn" type="button" aria-label="Nhấn để nói câu hỏi" aria-pressed="false" aria-describedby="micHint" title="Nhấn để nói">
+                    <svg class="mic-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8"/></svg>
+                    <span class="mic-waveform" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+                </button>
                 <button class="send-btn" id="sendTextBtn" type="button" aria-label="Gửi câu hỏi" title="Gửi câu hỏi"><svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M3.5 2.7a.7.7 0 0 0-1 .8l3 7.4 9.1 1.1-9.1 1.1-3 7.4a.7.7 0 0 0 1 .8l18-8.7a.7.7 0 0 0 0-1.2l-18-8.7Z"/></svg></button>
             </div>
-            <div class="composer-status" role="status" aria-live="polite" aria-atomic="true"><span class="status-dot" id="statusDot" aria-hidden="true"></span><span id="statusText">Nhấn micro để nói hoặc nhập câu hỏi</span></div>
-            <span class="sr-only" id="micHint">Nhấn nút micro trong ô nhập, cho phép sử dụng micro và nói câu hỏi bằng tiếng Việt.</span>
+            <div class="composer-status" id="composerStatus" role="status" aria-live="polite" aria-atomic="true"><span class="status-dot" id="statusDot" aria-hidden="true"></span><span id="statusText">Nhấn micro để nói hoặc nhập câu hỏi</span></div>
+            <span class="sr-only" id="micHint">Nhấn nút micro màu đỏ, cho phép sử dụng micro và nói câu hỏi bằng tiếng Việt.</span>
         </footer>
     </div>
-    <script>window.CAU_HOI_MAU = {{ cau_hoi_mau|tojson }};</script>
+
     <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 </body>
 </html>

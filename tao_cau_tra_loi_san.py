@@ -19,9 +19,10 @@ from concurrent.futures import ThreadPoolExecutor
 
 import ai_engine
 
-# Câu hỏi thường gặp ở cấp phường. NUT_CAU_HOI_MAU câu đầu hiện thành nút bấm
-# trên màn hình chào; các câu còn lại được trả lời ngay khi người dân gõ đúng
-# câu đó (bỏ qua chữ hoa/thường, khoảng trắng và dấu câu cuối câu).
+# Câu hỏi thường gặp ở cấp phường, được trả lời ngay khi người dân gõ đúng câu
+# đó (bỏ qua chữ hoa/thường, khoảng trắng và dấu câu cuối câu). 3 câu đầu cũng
+# là câu mà nút câu hỏi mẫu trên màn hình chào gửi đi (WELCOME_QUESTIONS trong
+# static/js/chat.js): sửa câu ở đây thì sửa cả ở đó.
 CAU_HOI = [
     "Thủ tục đăng ký khai sinh cần những gì?",
     "Thủ tục đăng ký kết hôn cần những gì?",
@@ -48,7 +49,6 @@ CAU_HOI = [
     "Trợ cấp xã hội cho người cao tuổi cần gì?",
     "Cấp lại thẻ BHYT bị mất thế nào?",
 ]
-NUT_CAU_HOI_MAU = 3  # 8 nút chiếm quá nhiều chỗ trên màn hình chào (góp ý 10/2026)
 SO_LUONG_SONG_SONG = 4
 
 # Soạn sẵn không cần nhanh, nên cho AI suy nghĩ kỹ nhất và đọc nhiều nguồn nhất
@@ -87,12 +87,11 @@ def main():
             loi.append(cau_hoi)
             continue
         answer, suggestions = kq
-        cau_tra_loi[ai_engine._cache_key(cau_hoi)] = {
+        cau_tra_loi[ai_engine.question_key(cau_hoi)] = {
             'cau_hoi': cau_hoi, 'answer': answer, 'suggestions': suggestions}
 
     data = {
-        'ngay_tao': ai_engine._today_vn().isoformat(),
-        'nut': [q for q in CAU_HOI[:NUT_CAU_HOI_MAU] if ai_engine._cache_key(q) in cau_tra_loi],
+        'ngay_tao': ai_engine.today_vn().isoformat(),
         'cau_tra_loi': cau_tra_loi,
     }
     tmp = ai_engine.CAU_TRA_LOI_SAN_FILE + '.tmp'

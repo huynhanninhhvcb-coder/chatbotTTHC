@@ -5,21 +5,12 @@ kiến thức huấn luyện sẵn có của model - để tìm đúng văn bả
 hành chính hiện hành. Việc tra cứu chỉ dùng để ĐẢM BẢO ĐỘ CHÍNH XÁC nội bộ;
 câu trả lời cuối cùng CHỈ gồm đúng nội dung trọng tâm (trình tự thực hiện,
 thành phần hồ sơ, căn cứ pháp lý) - không hiển thị đường link nguồn ra cho
-người dùng (theo yêu cầu).
+người dùng (theo yêu cầu). Model và giá: xem CHAT_MODEL trong config.py.
 
-Đã xác minh trực tiếp từ tài liệu OpenAI (10/2026, không suy đoán từ trí nhớ
-vì dòng model đã đổi nhiều lần từ đầu năm): model dùng là "gpt-6-luna" (rẻ
-nhất dòng GPT-6, hỗ trợ web_search), gọi qua client.responses.create(...) với
-tools=[{"type": "web_search"}]. Giá: ~$0.10/$0.50 mỗi 1 triệu token input/
-output, cộng $10/1.000 lượt tra cứu (~0,01 USD/lần tra cứu).
-
-Đánh đổi vẫn giữ nguyên như trước: không còn dữ liệu riêng (file .txt) của
-phường, nên với chi tiết đặc thù của phường Minh Phụng (giờ làm việc, mẫu đơn
-cụ thể...) mà tra cứu web cũng không chắc chắn, AI vẫn phải khuyên người dân
-xác minh trực tiếp tại nơi tiếp nhận thay vì khẳng định bừa.
-
-Không còn tra cứu tài liệu PDF nội bộ - bỏ theo yêu cầu 10/2026
-để mọi câu hỏi đi thẳng tới AI + tra cứu web, trả lời nhanh và đơn giản hơn.
+Không có dữ liệu riêng của phường, nên với chi tiết đặc thù của phường Minh
+Phụng (giờ làm việc, mẫu đơn cụ thể...) mà tra cứu web cũng không chắc chắn,
+AI phải khuyên người dân xác minh trực tiếp tại nơi tiếp nhận thay vì khẳng
+định bừa.
 
 Nguyên tắc quan trọng: stream_answer() PHẢI tự bắt lỗi và không trả về gì khi
 OpenAI không khả dụng (mất mạng, sai key, hết quota...), để app.py có thể
@@ -80,9 +71,12 @@ CACHE_MAX_ITEMS = 500
 _answer_cache = {}
 
 
-def _cache_key(question):
-    # Bỏ khác biệt hoa/thường, khoảng trắng thừa và dấu câu cuối câu để
-    # "Thủ tục khai sinh?" và "thủ tục khai sinh" dùng chung một câu trả lời.
+def question_key(question):
+    """Khóa tra bộ nhớ đệm và câu trả lời soạn sẵn cho một câu hỏi.
+
+    Bỏ khác biệt hoa/thường, khoảng trắng thừa và dấu câu cuối câu để
+    "Thủ tục khai sinh?" và "thủ tục khai sinh" dùng chung một câu trả lời.
+    """
     return ' '.join(question.lower().split()).rstrip(' ?.!')
 
 
@@ -108,6 +102,11 @@ CAU_TRA_LOI_SAN_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
 CAU_TRA_LOI_SAN_HAN_DUNG = 30  # ngày
 
 
+def today_vn():
+    # Giờ Việt Nam (UTC+7, không có giờ mùa hè) - server Render chạy theo giờ UTC.
+    return datetime.now(timezone(timedelta(hours=7))).date()
+
+
 def _tai_cau_tra_loi_san():
     try:
         with open(CAU_TRA_LOI_SAN_FILE, encoding='utf-8') as f:
@@ -116,19 +115,15 @@ def _tai_cau_tra_loi_san():
         return data
     except (OSError, ValueError, KeyError) as e:
         print(f"⚠️ Không đọc được câu trả lời soạn sẵn: {e}")
-        return {'ngay_tao': date.min, 'nut': [], 'cau_tra_loi': {}}
+        return {'ngay_tao': date.min, 'cau_tra_loi': {}}
 
 
 _san = _tai_cau_tra_loi_san()
 
 
 def _con_han_san():
-    return (_today_vn() - _san['ngay_tao']).days <= CAU_TRA_LOI_SAN_HAN_DUNG
+    return (today_vn() - _san['ngay_tao']).days <= CAU_TRA_LOI_SAN_HAN_DUNG
 
-
-def cau_hoi_mau():
-    """Các câu hỏi hiện thành nút trên màn hình chào (rỗng nếu câu trả lời soạn sẵn đã quá hạn)."""
-    return list(_san['nut']) if _con_han_san() else []
 
 # Khi dùng công cụ web_search, model có xu hướng TỰ ĐỘNG chèn trích dẫn dạng
 # "([domain.vn](https://...))" ngay sau câu - đây là hành vi mặc định của
@@ -187,6 +182,18 @@ def _parse_suggestions(text):
         if part and len(part) <= 80:
             items.append(part)
     return items[:MAX_SUGGESTIONS]
+
+
+def _suggestions_part(suggestions):
+    """Phần gợi ý gửi cho trình duyệt: SUGGESTIONS_SEPARATOR + danh sách JSON."""
+    return SUGGESTIONS_SEPARATOR + json.dumps(suggestions, ensure_ascii=False)
+
+
+def _saved_answer(answer, suggestions):
+    """Gửi lại một câu trả lời đã có (soạn sẵn hoặc trong bộ nhớ đệm)."""
+    yield answer
+    if suggestions:
+        yield _suggestions_part(suggestions)
 
 
 SYSTEM_PROMPT = f"""Bạn là trợ lý ảo AI của Trung tâm phục vụ hành chính công phường Minh Phụng, TP. Hồ Chí Minh.
@@ -249,11 +256,6 @@ QUY TẮC BẮT BUỘC:
 """
 
 
-def _today_vn():
-    # Giờ Việt Nam (UTC+7, không có giờ mùa hè) - server Render chạy theo giờ UTC.
-    return datetime.now(timezone(timedelta(hours=7))).date()
-
-
 def _build_messages(question, history, today):
     # Ngày hiện tại đặt CUỐI system prompt để phần đầu (giống hệt nhau ở mọi lần
     # gọi) vẫn được OpenAI cache lại, giúp phản hồi nhanh và rẻ hơn.
@@ -262,7 +264,59 @@ def _build_messages(question, history, today):
             {"role": "user", "content": question}]
 
 
-def stream_answer(question, history=None, dung_san=True):
+class _AnswerReader:
+    """
+    Đọc các sự kiện stream của MỘT lượt gọi model. Gửi câu trả lời ra theo TỪNG
+    DÒNG hoàn chỉnh để lọc được link (xem _strip_links_line), và giữ riêng các
+    dòng từ dấu [GỢI Ý] trở đi (không hiển thị, xem _parse_suggestions).
+    """
+
+    def __init__(self):
+        self.completed = False         # model đã trả lời trọn vẹn
+        self.n_web = 0                 # số lần model tra cứu web
+        self._pending = ''             # phần dòng đang viết dở, chưa lọc link được
+        self._suggestion_lines = None  # các dòng từ dấu [GỢI Ý] trở đi
+
+    def read(self, events):
+        """Các đoạn cần hiển thị: mỗi dòng kèm '\n', riêng dòng cuối thì không."""
+        for event in events:
+            if event.type == "response.output_text.delta":
+                self._pending += event.delta
+                *lines, self._pending = self._pending.split('\n')
+                for line in lines:
+                    text = self._take_line(line)
+                    if text is not None:
+                        yield text + '\n'
+            elif event.type == "response.completed":
+                self.completed = True
+                self.n_web = sum(1 for item in event.response.output if item.type == "web_search_call")
+            elif event.type == "response.failed":
+                error = event.response.error
+                raise RuntimeError(error.message if error else "response.failed")
+            elif event.type == "error":
+                raise RuntimeError(event.message)
+        text = self._take_line(self._pending) if self._pending else None
+        if text is not None:
+            yield text
+
+    def suggestions(self):
+        return _parse_suggestions('\n'.join(self._suggestion_lines or []))
+
+    def _take_line(self, line):
+        """Dòng cần hiển thị (đã lọc link), hoặc None nếu dòng thuộc phần gợi ý."""
+        if self._suggestion_lines is not None:
+            self._suggestion_lines.append(line)
+            return None
+        marker = _SUGGESTION_MARKER.search(line)
+        if marker:
+            self._suggestion_lines = [line[marker.end():]]
+            line = line[:marker.start()]
+            if not line.strip():
+                return None
+        return _strip_links_line(line)
+
+
+def stream_answer(question, history=None, dung_san=True, tai_lieu=False):
     """
     Gọi GPT (kèm công cụ tra cứu web) để trả lời câu hỏi, ưu tiên căn cứ vào
     nguồn thật tìm được trên web thay vì chỉ dựa vào kiến thức sẵn có của
@@ -272,91 +326,48 @@ def stream_answer(question, history=None, dung_san=True):
     sau là danh sách câu hỏi gợi ý dạng JSON. Không yield gì nếu OpenAI không
     khả dụng/lỗi ngay từ đầu, để app.py tự fallback sang câu trả lời xin lỗi +
     hướng dẫn liên hệ trực tiếp. dung_san=False: bỏ qua câu trả lời soạn sẵn
-    (dùng khi tao_cau_tra_loi_san.py soạn lại).
+    (dùng khi tao_cau_tra_loi_san.py soạn lại). tai_lieu=True: câu hỏi kèm nội
+    dung giấy tờ của người dân - không lưu bộ nhớ đệm (giữ họ tên, số CCCD...
+    trong RAM) và không bật tra cứu web (tránh đưa nội dung giấy tờ vào truy
+    vấn tìm kiếm của bên thứ ba).
     """
     # Câu hỏi thường gặp là câu hỏi trọn vẹn, không phụ thuộc ngữ cảnh, nên dùng
     # câu trả lời soạn sẵn kể cả giữa cuộc hội thoại (VD bấm nút câu hỏi mẫu).
-    san = _san['cau_tra_loi'].get(_cache_key(question)) if dung_san and _con_han_san() else None
+    san = _san['cau_tra_loi'].get(question_key(question)) if dung_san and not tai_lieu and _con_han_san() else None
     if san:
-        yield san['answer']
-        if san['suggestions']:
-            yield SUGGESTIONS_SEPARATOR + json.dumps(san['suggestions'], ensure_ascii=False)
+        yield from _saved_answer(san['answer'], san['suggestions'])
         return
 
     if not client:
         return
 
-    cache_key = None if history else _cache_key(question)
-    if cache_key:
-        cached = _cache_get(cache_key)
-        if cached:
-            answer, suggestions = cached
-            yield answer
-            if suggestions:
-                yield SUGGESTIONS_SEPARATOR + json.dumps(suggestions, ensure_ascii=False)
-            return
+    cache_key = None if history or tai_lieu else question_key(question)
+    cached = _cache_get(cache_key) if cache_key else None
+    if cached:
+        yield from _saved_answer(*cached)
+        return
 
     started = time.monotonic()
-    messages = _build_messages(question, history, _today_vn())
-
-    shown = []               # các dòng đã gửi cho người dùng
-    suggestion_lines = None  # các dòng từ dấu [GỢI Ý] trở đi (không hiển thị)
-
-    def take_line(line):
-        """Dòng cần hiển thị (đã lọc link), hoặc None nếu dòng thuộc phần gợi ý."""
-        nonlocal suggestion_lines
-        if suggestion_lines is not None:
-            suggestion_lines.append(line)
-            return None
-        marker = _SUGGESTION_MARKER.search(line)
-        if marker:
-            suggestion_lines = [line[marker.end():]]
-            line = line[:marker.start()]
-            if not line.strip():
-                return None
-        return _strip_links_line(line)
-
-    completed = False
-    t_first = None
-    n_web = 0
+    messages = _build_messages(question, history, today_vn())
+    shown = []      # các đoạn đã gửi cho người dùng
+    t_first = None  # thời gian tới lúc gửi dòng đầu tiên (ghi log)
     # Model chính lỗi trước khi kịp gửi dòng nào (thường do vượt giới hạn token/
     # phút) -> hỏi lại bằng model dự phòng; đã gửi dở thì không hỏi lại được nữa.
     for model in (CHAT_MODEL, FALLBACK_CHAT_MODEL):
-        pending = ''  # phần dòng đang viết dở, chưa lọc link được
-        suggestion_lines = None
+        reader = _AnswerReader()
         try:
-            stream = client.responses.create(
+            events = client.responses.create(
                 model=model,
                 reasoning={"effort": REASONING_EFFORT},
-                tools=[WEB_SEARCH_TOOL],
+                tools=[] if tai_lieu else [WEB_SEARCH_TOOL],
                 input=messages,
                 stream=True,
             )
-            for event in stream:
-                if event.type == "response.output_text.delta":
-                    pending += event.delta
-                    *lines, pending = pending.split('\n')
-                    for line in lines:
-                        text = take_line(line)
-                        if text is not None:
-                            if t_first is None:
-                                t_first = time.monotonic() - started
-                            shown.append(text)
-                            yield text + '\n'
-                elif event.type == "response.completed":
-                    completed = True
-                    n_web = sum(1 for item in event.response.output if item.type == "web_search_call")
-                elif event.type == "response.failed":
-                    error = event.response.error
-                    raise RuntimeError(error.message if error else "response.failed")
-                elif event.type == "error":
-                    raise RuntimeError(event.message)
-            text = take_line(pending) if pending else None
-            if text is not None:
+            for chunk in reader.read(events):
                 if t_first is None:
                     t_first = time.monotonic() - started
-                shown.append(text)
-                yield text
+                shown.append(chunk)
+                yield chunk
             break
         except Exception as e:
             print(f"⚠️ Lỗi gọi OpenAI Responses API ({model}): {e}")
@@ -369,11 +380,11 @@ def stream_answer(question, history=None, dung_san=True):
     # Một dòng log cho mỗi câu trả lời (xem trong mục Logs của Render) để theo dõi tốc độ thật.
     first = f"{t_first:.2f}s" if t_first is not None else "-"
     print(f"⏱️ dòng đầu {first} | "
-          f"xong {time.monotonic() - started:.2f}s | tra web {n_web} lần | {model}", flush=True)
+          f"xong {time.monotonic() - started:.2f}s | tra web {reader.n_web} lần | {model}", flush=True)
 
-    suggestions = _parse_suggestions('\n'.join(suggestion_lines or []))
+    suggestions = reader.suggestions()
     if suggestions:
-        yield SUGGESTIONS_SEPARATOR + json.dumps(suggestions, ensure_ascii=False)
-    answer = '\n'.join(shown).strip()
-    if cache_key and answer and completed:
+        yield _suggestions_part(suggestions)
+    answer = ''.join(shown).strip()
+    if cache_key and answer and reader.completed:
         _cache_set(cache_key, (answer, suggestions))

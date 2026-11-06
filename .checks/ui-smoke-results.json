@@ -6,18 +6,18 @@
       "ok": true,
       "detail": {
         "mic": [
-          40,
-          40
+          54,
+          54
         ],
         "send": [
-          36,
-          36
+          44,
+          44
         ],
-        "micBackground": "linear-gradient(145deg, rgb(244, 35, 50), rgb(223, 15, 31))",
+        "micBackground": "linear-gradient(145deg, rgb(248, 48, 63), rgb(216, 12, 28))",
         "micColor": "rgb(255, 255, 255)",
-        "sendBackground": "rgb(242, 243, 246)",
-        "composerHeight": 90,
-        "chatFraction": 0.66,
+        "sendBackground": "rgb(238, 240, 244)",
+        "composerHeight": 93.5,
+        "chatFraction": 0.67,
         "logoSize": [
           816,
           195
@@ -29,18 +29,18 @@
       "ok": true,
       "detail": {
         "mic": [
+          50,
+          50
+        ],
+        "send": [
           40,
           40
         ],
-        "send": [
-          36,
-          36
-        ],
-        "micBackground": "linear-gradient(145deg, rgb(244, 35, 50), rgb(223, 15, 31))",
+        "micBackground": "linear-gradient(145deg, rgb(248, 48, 63), rgb(216, 12, 28))",
         "micColor": "rgb(255, 255, 255)",
-        "sendBackground": "rgb(242, 243, 246)",
-        "composerHeight": 87,
-        "chatFraction": 0.61,
+        "sendBackground": "rgb(238, 240, 244)",
+        "composerHeight": 93.5,
+        "chatFraction": 0.57,
         "logoSize": [
           816,
           195
@@ -52,18 +52,18 @@
       "ok": true,
       "detail": {
         "mic": [
-          44,
-          44
+          64,
+          64
         ],
         "send": [
-          40,
-          40
+          50,
+          50
         ],
-        "micBackground": "linear-gradient(145deg, rgb(244, 35, 50), rgb(223, 15, 31))",
+        "micBackground": "linear-gradient(145deg, rgb(248, 48, 63), rgb(216, 12, 28))",
         "micColor": "rgb(255, 255, 255)",
-        "sendBackground": "rgb(242, 243, 246)",
-        "composerHeight": 98,
-        "chatFraction": 0.65,
+        "sendBackground": "rgb(238, 240, 244)",
+        "composerHeight": 122,
+        "chatFraction": 0.68,
         "logoSize": [
           816,
           195
@@ -75,18 +75,18 @@
       "ok": true,
       "detail": {
         "mic": [
-          44,
-          44
+          76.3125,
+          76.3125
         ],
         "send": [
-          40,
-          40
+          59.03125,
+          59.03125
         ],
-        "micBackground": "linear-gradient(145deg, rgb(244, 35, 50), rgb(223, 15, 31))",
+        "micBackground": "linear-gradient(145deg, rgb(248, 48, 63), rgb(216, 12, 28))",
         "micColor": "rgb(255, 255, 255)",
-        "sendBackground": "rgb(242, 243, 246)",
-        "composerHeight": 98,
-        "chatFraction": 0.64,
+        "sendBackground": "rgb(238, 240, 244)",
+        "composerHeight": 122,
+        "chatFraction": 0.66,
         "logoSize": [
           816,
           195
@@ -98,17 +98,17 @@
       "ok": true,
       "detail": {
         "mic": [
-          36,
-          36
+          46,
+          46
         ],
         "send": [
-          32,
-          32
+          40,
+          40
         ],
-        "micBackground": "linear-gradient(145deg, rgb(244, 35, 50), rgb(223, 15, 31))",
+        "micBackground": "linear-gradient(145deg, rgb(248, 48, 63), rgb(216, 12, 28))",
         "micColor": "rgb(255, 255, 255)",
-        "sendBackground": "rgb(242, 243, 246)",
-        "composerHeight": 73,
+        "sendBackground": "rgb(238, 240, 244)",
+        "composerHeight": 80.390625,
         "chatFraction": 0.53,
         "logoSize": [
           816,
@@ -129,7 +129,7 @@
       "ok": true
     },
     {
-      "name": "BHYT, form and neighborhood shortcuts",
+      "name": "BHYT, form, neighborhood and YouTube shortcuts",
       "ok": true
     },
     {
@@ -170,10 +170,10 @@
       "detail": {
         "scrollable": true,
         "atLatest": true,
-        "lastBottom": 731.703125,
-        "composerTop": 754,
+        "lastBottom": 737,
+        "composerTop": 750.5,
         "overflow": false,
-        "micWidth": 40,
+        "micWidth": 54,
         "headings": 3
       }
     },
@@ -185,8 +185,29 @@
       "name": "welcome sample questions render, send, and return after clear",
       "ok": true,
       "detail": {
-        "count": 3
+        "count": 4
       }
+    },
+    {
+      "name": "form-filling shortcut opens the form assistant",
+      "ok": true,
+      "detail": {
+        "groups": [
+          "Tờ khai đề nghị hưởng chế độ",
+          "Đơn xác nhận chưa hưởng chế độ"
+        ]
+      }
+    },
+    {
+      "name": "incomplete form: supplement shows choices, create-anyway downloads Word",
+      "ok": true,
+      "detail": {
+        "file": "to-khai-de-nghi-ho-tro-chi-phi-mai-tang.docx"
+      }
+    },
+    {
+      "name": "form flow recovers from expired interview, vague replies and clear while pending",
+      "ok": true
     },
     {
       "name": "normal motion entrance settles with visible voice invitation",
@@ -204,8 +225,8 @@
       "name": "animated menu, messages, send and microphone clean up without moving controls",
       "ok": true,
       "detail": {
-        "composerHeight": 90,
-        "chatHeight": 557.796875
+        "composerHeight": 93.5,
+        "chatHeight": 567.96875
       }
     },
     {

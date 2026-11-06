@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Trích xuất thông tin từ PDF hoặc ảnh để hỗ trợ điền biểu mẫu hành chính."
+    />
+    <meta name="theme-color" content="#ec1625" />
+    <title>Điền đơn hỗ trợ | Auto Form</title>
+    <!-- Favicon nhúng trực tiếp dạng SVG data URI (dấu tick trên nền màu thương hiệu), không cần tệp ảnh riêng -->
+    <link
+      rel="icon"
+      href="{{ url_for('static', filename='images/Picture1.png') }}"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+  </head>
+  <body>
+    <main class="container">
+      <header class="site-header" aria-label="Trung tâm phục vụ hành chính công">
+        <img
+          class="site-logo"
+          src="{{ url_for('static', filename='images/Picture1.png') }}"
+          alt="Trung tâm phục vụ hành chính công phường Minh Phụng – Hành chính phục vụ"
+        />
+        <div class="site-heading">
+          <div>
+            <h1>Trợ lý điền đơn hành chính</h1>
+            <p>Quét giấy tờ hoặc phỏng vấn bằng giọng nói</p>
+          </div>
+          <span class="online-status"><i aria-hidden="true"></i>Đang hoạt động</span>
+        </div>
+        <a class="back-to-chat" href="/">← Quay lại chatbot</a>
+      </header>
+      <!-- Khối giới thiệu đầu trang: tiêu đề và mô tả ngắn về dịch vụ -->
+      <section class="hero" aria-labelledby="page-title">
+        <p class="eyebrow">DỊCH VỤ TRỰC TUYẾN</p>
+        <h2 id="page-title">Điền đơn tự động</h2>
+        <p>
+          Tải giấy tờ để trích xuất thông tin hoặc trả lời từng câu hỏi với trợ
+          lý để tạo đơn.
+        </p>
+      </section>
+
+      <!-- Thanh hiển thị 3 bước thực hiện (chỉ mang tính minh họa, không có logic JS gắn trực tiếp ở đây) -->
+      <ol class="steps" aria-label="Các bước thực hiện">
+        <li><span>1</span>Cung cấp thông tin</li>
+        <li><span>2</span>Kiểm tra thông tin</li>
+        <li><span>3</span>Tải biểu mẫu</li>
+      </ol>
+
+      <!-- BƯỚC 1: Thẻ chọn nguồn dữ liệu đầu vào - có 2 cách: tải ảnh/PDF để quét hoặc dùng trợ lý phỏng vấn bằng giọng nói -->
+      <section class="card upload-card" aria-labelledby="upload-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">BƯỚC 1</p>
+            <h2 id="upload-title">Chọn tài liệu nguồn</h2>
+          </div>
+          <span class="supported">2 CÁCH THỰC HIỆN</span>
+        </div>
+
+        <!-- Nút chuyển đổi giữa 2 cách nhập liệu: quét tài liệu (scan) hoặc phỏng vấn bằng giọng nói (interview) -->
+        <div
+          class="method-switch"
+          role="tablist"
+          aria-label="Cách cung cấp thông tin"
+        >
+          <button
+            class="method-button active"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            data-method="scan"
+          >
+            Tải ảnh hoặc PDF
+          </button>
+          <button
+            class="method-button"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            data-method="interview"
+          >
+            Trợ lý phỏng vấn
+          </button>
+        </div>
+
+        <!-- Chọn loại biểu mẫu cần điền; giá trị này quyết định nhóm trường nào (template-fields) sẽ hiện ra ở bước 2 -->
+        <div class="template-select-row">
+          <label class="field-label" for="template-id">Biểu mẫu cần điền</label>
+          <select id="template-id" name="template_id">
+            {% for template in templates %}
+            <option value="{{ template.id }}">{{ template.title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Bảng thao tác cho cách "Tải ảnh hoặc PDF": vùng chọn tệp, danh sách tệp đã chọn, tùy chọn AI, nút trích xuất -->
+        <div id="scan-panel">
+          <form id="upload-form" novalidate>
+            <!-- Input file ẩn, được kích hoạt qua nhãn drop-zone (nhấn hoặc kéo-thả) -->
+            <input
+              id="file-input"
+              name="files"
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+              multiple
+              aria-describedby="file-constraints"
+              hidden
+            />
+            <label class="drop-zone" for="file-input" id="drop-zone">
+              <span class="upload-icon" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"
+                  ></path>
+                  <polyline points="16 16 12 12 8 16"></polyline>
+                  <line x1="12" y1="12" x2="12" y2="21"></line>
+                </svg>
+              </span>
+              <strong id="file-name">Chọn một hoặc nhiều ảnh/PDF</strong>
+              <span id="file-constraints"
+                >Kéo thả tệp vào đây hoặc bấm để chọn · tối đa 5 tệp, 12 MB mỗi
+                tệp, 60 MB mỗi lượt</span
+              >
+            </label>
+            <!-- Khu vực liệt kê các tệp người dùng đã chọn; ẩn cho tới khi có tệp (JS hiện lại và render danh sách) -->
+            <section
+              id="selected-file-panel"
+              class="selected-file-panel"
+              aria-live="polite"
+              hidden
+            >
+              <div class="selected-file-heading">
+                <strong id="file-selection-summary">Các tệp đã chọn</strong>
+                <button
+                  id="clear-files-button"
+                  class="file-clear-button"
+                  type="button"
+                >
+                  Bỏ tất cả
+                </button>
+              </div>
+              <ul
+                id="file-list"
+                class="file-list"
+                aria-label="Danh sách tệp đã chọn"
+              ></ul>
+            </section>
+            <!-- Tùy chọn "Chế độ nhanh": chỉ hiện khi backend đã cấu hình AI (ai_configured), cho phép gửi tài liệu tới OpenAI thay vì OCR cục bộ -->
+            {% if ai_configured %}
+            <label class="ai-consent" for="use-ai">
+              <input id="use-ai" name="use_ai" type="checkbox" value="1" />
+              <span>
+                <strong>Chế độ nhanh: cho phép AI đọc trực tiếp</strong>
+                <small
+                  >Khi bật, ảnh/PDF được gửi tới OpenAI và không phải chờ OCR
+                  Tesseract trên máy chủ chậm. Nếu không bật, tài liệu chỉ được
+                  xử lý cục bộ trên máy chủ.</small
+                >
+              </span>
+            </label>
+            {% endif %}
+            <button class="button primary" id="extract-button" type="submit">
+              <span class="button-label">Trích xuất thông tin</span>
+            </button>
+          </form>
+          <p class="privacy-note">
+            Tệp tạm trên máy chủ được tự động xóa sau xử lý. Khi bật AI, nội
+            dung tài liệu được gửi tới OpenAI để nhận diện. Hãy tự kiểm tra
+            thông tin trước khi sử dụng.
+          </p>
+        </div>
+
+        <!-- Bảng thao tác cho cách "Trợ lý phỏng vấn": hỏi từng câu bằng giọng nói, người dùng trả lời qua micro hoặc gõ bàn phím -->
+        <section
+          id="interview-panel"
+          class="interview-panel"
+          hidden
+          aria-labelledby="interview-title"
+        >
+          <div class="interview-intro">
+            <div>
+              <h3 id="interview-title">Trợ lý phỏng vấn điền đơn</h3>
+              <p>
+                Không có giấy tờ để quét? Trợ lý sẽ đọc từng câu hỏi; bạn trả
+                lời trực tiếp bằng giọng nói. Có thể nói “bỏ qua” với trường
+                không bắt buộc.
+              </p>
+            </div>
+            <span class="local-badge">Giọng nói tiếng Việt</span>
+          </div>
+          <button class="button primary" id="interview-start" type="button">
+            <span class="button-label">Bắt đầu phỏng vấn</span>
+          </button>
+          <!-- Thanh tiến độ phỏng vấn (ví dụ: câu hỏi x/y), do JS cập nhật -->
+          <div id="interview-progress" class="interview-progress" hidden></div>
+          <!-- Nhật ký hội thoại phỏng vấn: câu hỏi của trợ lý và câu trả lời của người dùng -->
+          <div
+            id="interview-chat"
+            class="chat-log"
+            aria-live="polite"
+            hidden
+          ></div>
+          <!-- Nhóm điều khiển trả lời bằng giọng nói: nút ghi âm, nút nghe lại câu hỏi, trạng thái nhận dạng/đọc giọng nói -->
+          <div id="voice-controls" class="voice-controls" hidden>
+            <button
+              class="button primary voice-answer-button"
+              id="voice-answer-button"
+              type="button"
+              aria-pressed="false"
+            >
+              <span class="mic-icon" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"
+                  ></path>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                  <line x1="12" y1="19" x2="12" y2="23"></line>
+                  <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg> </span
+              ><span class="button-label">Bấm để trả lời bằng giọng nói</span>
+            </button>
+            <button
+              class="secondary-button"
+              id="repeat-question-button"
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              </svg>
+              Nghe lại câu hỏi
+            </button>
+            <p
+              id="voice-output-status"
+              class="voice-output-status"
+              role="status"
+              aria-live="polite"
+            >
+              Đang kiểm tra giọng đọc tiếng Việt…
+            </p>
+            <p
+              id="voice-status"
+              class="voice-status"
+              role="status"
+              aria-live="polite"
+            >
+              Sẵn sàng nhận câu trả lời bằng tiếng Việt.
+            </p>
+            <p id="voice-transcript" class="voice-transcript" hidden></p>
+            <div
+              id="voice-confirm-controls"
+              class="voice-confirm-controls"
+              hidden
+            >
+              <p>
+                Hãy kiểm tra nội dung vừa nhận dạng trước khi lưu câu trả lời
+                này.
+              </p>
+              <button
+                class="button primary"
+                id="voice-confirm-button"
+                type="button"
+              >
+                <span class="button-label">Xác nhận câu trả lời</span>
+              </button>
+              <button
+                class="secondary-button"
+                id="voice-retry-button"
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"
+                  ></path>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                  <line x1="12" y1="19" x2="12" y2="23"></line>
+                  <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+                Nói lại
+              </button>
+            </div>
+          </div>
+          <!-- Phương án dự phòng khi không dùng được micro: cho phép gõ câu trả lời trực tiếp -->
+          <details id="keyboard-fallback" class="keyboard-fallback" hidden>
+            <summary>
+              Không thể dùng micro? Nhập câu trả lời bằng bàn phím
+            </summary>
+            <form id="interview-form" class="chat-answer">
+              <label class="sr-only" for="interview-answer"
+                >Câu trả lời của bạn</label
+              >
+              <input
+                id="interview-answer"
+                autocomplete="off"
+                placeholder="Nhập câu trả lời của bạn…"
+              />
+              <button class="button primary" id="interview-send" type="submit">
+                <span class="button-label">Gửi</span>
+              </button>
+            </form>
+          </details>
+          <p class="privacy-note">
+            Âm thanh được trình duyệt xử lý bằng dịch vụ nhận dạng giọng nói của
+            thiết bị/trình duyệt; máy chủ không lưu tệp âm thanh. Thông tin đã
+            nhận chỉ giữ tạm trong bộ nhớ tối đa 30 phút.
+          </p>
+        </section>
+      </section>
+
+      <!-- Vùng thông báo trạng thái dùng chung (đang xử lý, lỗi, thành công...), do JS điền nội dung và bật/tắt hidden -->
+      <div
+        id="status"
+        class="status"
+        role="status"
+        aria-live="polite"
+        hidden
+      ></div>
+
+      <!-- BƯỚC 2: Thẻ kiểm tra/chỉnh sửa thông tin đã trích xuất trước khi tạo đơn; ẩn cho tới khi có dữ liệu -->
+      <section
+        id="review-section"
+        class="card review-card"
+        hidden
+        aria-labelledby="review-title"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">BƯỚC 2</p>
+            <h2 id="review-title">Kiểm tra thông tin</h2>
+          </div>
+          <span class="review-badge">Cần xác nhận</span>
+        </div>
+        <p class="review-intro">
+          Các ô dưới đây là gợi ý từ tài liệu. Vui lòng sửa mọi thông tin chưa
+          chính xác trước khi tạo đơn.
+        </p>
+
+        <form id="data-form" novalidate>
+          <!-- Các trường của mẫu đang chọn, dựng từ danh mục /api/templates
+               (form_static/js/app.js) để luôn khớp với các mẫu trong templates_word -->
+          <div class="form-grid" id="template-fields" aria-live="polite"></div>
+
+          <!-- BƯỚC 3: Hàng chứa nút tạo và tải về tệp Word đã điền sẵn thông tin -->
+          <div class="generate-row">
+            <div>
+              <strong>BƯỚC 3 — Tạo tệp biểu mẫu</strong
+              ><span
+                >Tệp sẽ được tải về máy và không lưu lại trên máy chủ.</span
+              >
+            </div>
+            <div class="export-actions">
+              <button class="button primary" id="generate-button" type="submit">
+                <span class="button-label">Tải biểu mẫu Word</span>
+              </button>
+            </div>
+          </div>
+        </form>
+      </section>
+    </main>
+    <!-- Chân trang: dòng miễn trừ trách nhiệm về việc xác nhận thông tin -->
+    <footer>
+      Auto Form chỉ hỗ trợ nhập liệu; người nộp đơn chịu trách nhiệm xác nhận
+      thông tin cuối cùng.
+    </footer>
+    <!-- Hiệu ứng gợn sóng (ripple) khi bấm nút; defer để không chặn render trang -->
+    <script src="{{ url_for('static', filename='js/ripple.js') }}" defer></script>
+    <!-- Toàn bộ logic chính của trang: chuyển tab scan/interview, upload & trích xuất tài liệu, đổ dữ liệu vào form review, gọi API tạo biểu mẫu Word -->
+    <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+  </body>
+</html>

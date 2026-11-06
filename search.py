@@ -5,27 +5,15 @@ còn dùng để tìm kiếm/dò thủ tục nữa, vì chatbot giờ trả lờ
 chung của AI (xem ai_engine.py) thay vì tra cứu dữ liệu riêng.
 """
 import re
-import unicodedata
 
-
-def remove_accents(text):
-    """
-    Bỏ dấu tiếng Việt. Chữ "đ/Đ" phải đổi thành "d/D" TRƯỚC khi chuẩn hóa NFD,
-    vì đây là một ký tự Unicode riêng biệt (không phải "d" + dấu phụ) nên NFD
-    không tách được - nếu không xử lý riêng, encode ascii sẽ xóa mất "đ".
-    """
-    text = text.replace('đ', 'd').replace('Đ', 'D')
-    text = unicodedata.normalize('NFD', text)
-    text = text.encode('ascii', 'ignore').decode('utf-8')
-    return text.lower()
+from utils.text_utils import strip_accents
 
 
 def chuan_hoa_tim_kiem(text):
-    """Chuẩn hóa văn bản tìm kiếm"""
-    text = remove_accents(text)
+    """Chữ thường không dấu, chỉ giữ chữ cái, chữ số và một dấu cách giữa các từ."""
+    text = strip_accents(text).encode('ascii', 'ignore').decode('ascii').lower()
     text = re.sub(r'[^a-z0-9\s]', '', text)
-    text = ' '.join(text.split())
-    return text
+    return ' '.join(text.split())
 
 
 # Từ xưng hô/đệm lịch sự, không làm thay đổi ý của câu (đã bỏ dấu).

@@ -143,7 +143,7 @@ async function capture(cdp, filename) {
 
 async function geometry(cdp) {
     return cdp.evaluate(`(() => {
-        const selectors = ['#micBtn','#textInput','#sendTextBtn','#bhytBtn','#mauDonBtn','#khuPhoBtn','#menuBtn'];
+        const selectors = ['#micBtn','#textInput','#sendTextBtn','#bhytBtn','#mauDonBtn','#khuPhoBtn','#dienDonBtn','#youtubeBtn','#attachBtn','#menuBtn'];
         const rect = el => {const r=el.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};
         const controls = selectors.map(selector => {
             const el = document.querySelector(selector);
@@ -186,8 +186,11 @@ async function verifyLayout(width, height, screenshot) {
         }
         const mic = layout.controls.find(control => control.selector === '#micBtn');
         const send = layout.controls.find(control => control.selector === '#sendTextBtn');
+        // Bản thiết kế 10/2026: micro tròn lớn ở máy tính, gọn hơn trên điện thoại.
+        const compact = width <= 700 || height <= 560;
         const minimumMicSize = height <= 420 ? 36 : 40;
-        assert(mic.width >= minimumMicSize && mic.height >= minimumMicSize && mic.width <= 48 && mic.height <= 48, `Microphone should remain a compact usable target: ${JSON.stringify(mic)}`);
+        const maximumMicSize = compact ? 60 : 100;
+        assert(mic.width >= minimumMicSize && mic.height >= minimumMicSize && mic.width <= maximumMicSize && mic.height <= maximumMicSize, `Microphone should remain a usable, proportionate target: ${JSON.stringify(mic)}`);
         assert(mic.width >= send.width && mic.height >= send.height, 'Voice input should be at least as prominent as the send control');
         const rgb = value => value.match(/rgba?\(([^)]+)\)/)?.[1].match(/[\d.]+/g)?.slice(0,3).map(Number) || [];
         const micPaint = mic.backgroundImage !== 'none' ? mic.backgroundImage : mic.background;
@@ -197,12 +200,12 @@ async function verifyLayout(width, height, screenshot) {
         assert(micBackground.length===3 && micBackground[0]>180 && micBackground[1]<110 && micBackground[2]<110, `Primary microphone should have a red background: ${micPaint}`);
         assert(micColor.length===3 && micColor.every(channel=>channel>=240), `Microphone icon should remain white: ${mic.color}`);
         assert(sendBackground.length===3 && Math.max(...sendBackground)-Math.min(...sendBackground)<=15 && Math.min(...sendBackground)>=200, `Secondary send control should have a neutral background: ${send.background}`);
-        assert(layout.composer && layout.composer.height <= 100, `Resting composer takes too much chat space: ${JSON.stringify(layout.composer)}`);
+        assert(layout.composer && layout.composer.height <= (compact ? 100 : 130), `Resting composer takes too much chat space: ${JSON.stringify(layout.composer)}`);
         const minimumChatFraction = height <= 420 ? 0.40 : width <= 320 ? 0.55 : 0.60;
         assert(layout.messages.height / layout.shell.height >= minimumChatFraction, `Chat should use at least ${minimumChatFraction * 100}% of the app: ${JSON.stringify(layout)}`);
         assert.equal(layout.obsoleteCount, 0, 'Removed hero, microphone dock and navigation panels should not remain');
         assert(layout.logo && layout.logo.src.includes('logo-minh-phung.png') && layout.logo.naturalWidth > 0, 'Header should load the uploaded full logo');
-        assert(layout.avatarLogo && layout.avatarLogo.src === layout.logo.src && layout.avatarLogo.naturalWidth > 0, 'Bot avatar should use the same uploaded logo asset');
+        assert(layout.avatarLogo && layout.avatarLogo.src.includes('robot-assistant.webp') && layout.avatarLogo.naturalWidth > 0, 'Bot avatar should load the robot assistant image');
         assert.equal(cdp.errors.length, 0, `Browser JS errors: ${JSON.stringify(cdp.errors)}`);
         if (screenshot) await capture(cdp, screenshot);
         record(`layout ${width}x${height}`, {mic:[mic.width,mic.height],send:[send.width,send.height],micBackground:micPaint,micColor:mic.color,sendBackground:send.background,composerHeight:layout.composer.height,chatFraction:Number((layout.messages.height/layout.shell.height).toFixed(2)),logoSize:[layout.logo.naturalWidth,layout.logo.naturalHeight]});
@@ -257,12 +260,12 @@ async function verifyInteraction() {
         record('voice guidance from menu');
 
         await cdp.evaluate(`window.__opened=[];window.open=(...args)=>{window.__opened.push(args);return null;}`);
-        for (const id of ['bhytBtn','mauDonBtn','khuPhoBtn']) await click(cdp, id);
+        for (const id of ['bhytBtn','mauDonBtn','khuPhoBtn','youtubeBtn']) await click(cdp, id);
         const opened = await cdp.evaluate(`window.__opened.map(args=>({url:args[0],target:args[1],features:args[2]}))`);
-        assert.equal(opened.length, 3, 'Three shortcuts should open destinations');
-        assert(opened[0].url.includes('baohiemxahoi.gov.vn') && opened[1].url === '/mau-don' && opened[2].url.includes('phuongminhphung'), `Shortcut destinations changed: ${JSON.stringify(opened)}`);
+        assert.equal(opened.length, 4, 'Four shortcuts should open destinations');
+        assert(opened[0].url.includes('baohiemxahoi.gov.vn') && opened[1].url === '/mau-don' && opened[2].url.includes('phuongminhphung') && opened[3].url === 'https://www.youtube.com/@TTPVHCCMinhPh%E1%BB%A5ng', `Shortcut destinations changed: ${JSON.stringify(opened)}`);
         assert(opened.every(item=>item.target==='_blank' && item.features.includes('noopener')), 'Shortcut destinations should open safely in a new tab');
-        record('BHYT, form and neighborhood shortcuts');
+        record('BHYT, form, neighborhood and YouTube shortcuts');
 
         await cdp.evaluate(`document.getElementById('textInput').value='hello';document.getElementById('textInput').focus()`);
         await cdp.send('Input.dispatchKeyEvent', { type:'keyDown', key:'Enter', code:'Enter' });
@@ -348,7 +351,7 @@ async function verifyLongConversation() {
         const state = await cdp.evaluate(`(() => {const messages=document.getElementById('chatMessages'),composer=document.querySelector('.composer'),last=messages.lastElementChild;return {scrollable:messages.scrollHeight>messages.clientHeight,atLatest:Math.abs(messages.scrollHeight-messages.clientHeight-messages.scrollTop)<2,lastBottom:last.getBoundingClientRect().bottom,composerTop:composer.getBoundingClientRect().top,overflow:document.documentElement.scrollWidth>innerWidth,micWidth:document.getElementById('micBtn').getBoundingClientRect().width,headings:messages.querySelectorAll('.answer-section-title').length};})()`);
         assert(state.scrollable && state.atLatest, `Long answer should scroll within chat: ${JSON.stringify(state)}`);
         assert(state.lastBottom <= state.composerTop + 1, 'Composer must not cover the final answer');
-        assert(!state.overflow && state.micWidth <= 48, 'Long answer should preserve compact controls and page width');
+        assert(!state.overflow && state.micWidth <= 60, 'Long answer should preserve compact controls and page width');
         assert.equal(state.headings,3,'Formatted answer should render its three heading cards');
         await capture(cdp, 'conversation-mobile.png');
         record('long formatted reply scrolls above compact composer', state);
@@ -379,23 +382,105 @@ async function verifySuggestions() {
 async function verifyWelcomeQuestions() {
     const cdp = await createPage({mockSpeech:true});
     try {
-        // Nút câu hỏi mẫu trên màn hình chào: đúng danh sách server gửi, nằm trước giờ gửi.
-        let state = await cdp.evaluate(`(() => {const bot=document.querySelector('#chatMessages .message.bot');return {expected:window.CAU_HOI_MAU,chips:[...bot.querySelectorAll('.chip-btn')].map(b=>b.textContent),chipsBeforeTime:bot.querySelector('.quick-replies')?.nextElementSibling?.className,overflow:document.documentElement.scrollWidth>innerWidth};})()`);
-        assert(Array.isArray(state.expected) && state.expected.length > 0, `Server should send sample questions: ${JSON.stringify(state)}`);
-        assert.deepEqual(state.chips, state.expected, 'Welcome chips should match server sample questions');
-        assert.equal(state.chipsBeforeTime, 'timestamp', 'Welcome chips should sit between greeting and timestamp');
+        // Nút câu hỏi mẫu trên màn hình chào (bản thiết kế 10/2026): 4 nút nhãn
+        // ngắn, nằm cuối lời chào. 3 nút đầu gửi đúng câu đã soạn sẵn câu trả lời.
+        const labels = ['Đăng ký khai sinh cần gì?', 'Thủ tục kết hôn ra sao?', 'Tạm trú cần giấy tờ gì?', 'Cách nộp hồ sơ trực tuyến?'];
+        let state = await cdp.evaluate(`(() => {const bot=document.querySelector('#chatMessages .message.welcome');const chips=[...bot.querySelectorAll('.welcome-chips .chip-btn')];return {chips:chips.map(b=>b.textContent),questions:chips.map(b=>b.title),last:bot.lastElementChild?.className,overflow:document.documentElement.scrollWidth>innerWidth};})()`);
+        assert.deepEqual(state.chips, labels, 'Welcome chips should show the four short labels');
+        assert.equal(state.last, 'welcome-chips', 'Welcome chips should close the greeting');
         assert(!state.overflow, 'Welcome chips must not cause horizontal scroll');
+        const prepared = Object.values(JSON.parse(fs.readFileSync(path.join(CHECKS_DIR, '..', 'cau_tra_loi_san.json'), 'utf8')).cau_tra_loi).map(item => item.cau_hoi);
+        for (const question of state.questions.slice(0, 3)) assert(prepared.includes(question), `Welcome chip question has no prepared answer: ${question}`);
         await capture(cdp, 'welcome-questions-mobile.png');
-        await cdp.evaluate(`window.__mockReply='Trả lời soạn sẵn.';document.querySelector('#chatMessages .message.bot .chip-btn').click()`);
+        await cdp.evaluate(`window.__mockReply='Trả lời soạn sẵn.';document.querySelector('#chatMessages .welcome-chips .chip-btn').click()`);
         await poll(() => cdp.evaluate(`window.__speechMock.calls.requests.length===1 && !document.getElementById('typingIndicator')`), 'welcome chip sends question');
-        state = await cdp.evaluate(`window.__speechMock.calls.requests[0]`);
-        assert.equal(state.message, (await cdp.evaluate(`window.CAU_HOI_MAU[0]`)), 'Welcome chip should send its own text');
-        assert.deepEqual(state.history, [], 'First question from welcome chip has no history');
-        const count = await cdp.evaluate(`window.CAU_HOI_MAU.length`);
+        const request = await cdp.evaluate(`window.__speechMock.calls.requests[0]`);
+        assert.equal(request.message, state.questions[0], 'Welcome chip should send its full question');
+        assert.deepEqual(request.history, [], 'First question from welcome chip has no history');
+        const count = labels.length;
         await openMenu(cdp);
         await click(cdp, 'clearBtn');
         await poll(() => cdp.evaluate(`document.querySelectorAll('#chatMessages .message.user').length===0 && document.querySelectorAll('#chatMessages .message.bot .chip-btn').length===${count}`), 'clear restores welcome chips');
         record('welcome sample questions render, send, and return after clear', { count });
+    } finally {await closePage(cdp);}
+}
+
+async function verifyFormShortcut() {
+    const cdp = await createPage({mockSpeech:true});
+    try {
+        // Nút "Điền đơn tự động" mở trợ lý điền đơn (danh mục mẫu lấy thật từ /dien-don/api).
+        await click(cdp, 'dienDonBtn');
+        await poll(() => cdp.evaluate(`document.getElementById('chatMessages').textContent.includes('Tôi sẽ giúp Anh/Chị điền đơn') && document.querySelectorAll('#chatMessages .form-actions .chip-btn').length>0`), 'form assistant opens with form groups');
+        const state = await cdp.evaluate(`({users:[...document.querySelectorAll('#chatMessages .message.user')].map(m=>m.textContent),groups:[...document.querySelectorAll('#chatMessages .form-actions .chip-btn')].map(b=>b.textContent),requests:window.__speechMock.calls.requests.length})`);
+        assert(state.users.length===1 && state.users[0].includes('điền đơn tự động'), `Form shortcut should echo the request: ${JSON.stringify(state)}`);
+        assert.equal(state.requests, 0, 'Form shortcut should not send a chat question to the AI');
+        await cdp.evaluate(`document.querySelector('#chatMessages .form-actions .chip-btn').click()`);
+        await poll(() => cdp.evaluate(`document.getElementById('chatMessages').textContent.includes('Anh/Chị chọn mẫu cần làm')`), 'form group leads to template choice');
+        assert.equal(cdp.errors.length, 0, `Browser JS errors: ${JSON.stringify(cdp.errors)}`);
+        record('form-filling shortcut opens the form assistant', {groups:state.groups});
+    } finally {await closePage(cdp);}
+}
+
+async function verifyIncompleteForm() {
+    // Màn hình kiểm tra đơn còn thiếu thông tin: "Bổ sung thông tin còn thiếu" hiện
+    // danh sách + 2 lựa chọn; "Tạo đơn dù còn thiếu" tải file Word ngay.
+    const cdp = await createPage({width:1440, height:900});
+    try {
+        await cdp.evaluate(`(async()=>{window.__downloads=[];window.__generate=[];const realClick=HTMLAnchorElement.prototype.click;HTMLAnchorElement.prototype.click=function(){if(this.download){window.__downloads.push({name:this.download,blob:this.href.startsWith('blob:')});return;}return realClick.call(this);};const realFetch=window.fetch.bind(window);window.fetch=async(input,options)=>{const response=await realFetch(input,options);if(String(input).includes('/api/generate'))window.__generate.push({body:JSON.parse(options.body),status:response.status});return response;};await loadFormCatalog();formFlow={stage:'review',templateId:'ho_tro_mai_tang',sessionId:null,fields:{full_name:'NGUYỄN VĂN AN'}};showFormReview('Đã đọc xong 1 tệp.');})()`);
+        const buttons = () => cdp.evaluate(`[...[...document.querySelectorAll('#chatMessages .message.bot')].pop().querySelectorAll('.form-actions .chip-btn')].map(b=>b.textContent)`);
+        assert.deepEqual(await buttons(), ['Bổ sung thông tin còn thiếu','Tạo đơn dù còn thiếu','Chọn mẫu khác'], 'Review of an incomplete form should offer three choices');
+        await cdp.evaluate(`[...document.querySelectorAll('.form-actions .chip-btn')].find(b=>b.textContent==='Bổ sung thông tin còn thiếu').click()`);
+        await poll(() => cdp.evaluate(`[...document.querySelectorAll('#chatMessages .message.bot')].pop().textContent.includes('Cần bổ sung thông tin trước khi tạo đơn')`), 'missing fields prompt');
+        const prompt = await cdp.evaluate(`[...document.querySelectorAll('#chatMessages .message.bot')].pop().textContent`);
+        assert(prompt.includes('Ngày mất') && prompt.includes('Họ và tên người mất'), `Prompt should list missing fields: ${prompt}`);
+        assert.deepEqual(await buttons(), ['Phỏng vấn để bổ sung','Chọn mẫu khác'], 'Missing fields prompt should offer interview or another template');
+        assert.equal(await cdp.evaluate(`window.__generate.length+window.__downloads.length`), 0, 'Asking to supplement should not create the form');
+        await cdp.evaluate(`[...document.querySelectorAll('.form-actions .chip-btn')].find(b=>b.textContent==='Tạo đơn dù còn thiếu').click()`);
+        await poll(() => cdp.evaluate(`window.__downloads.length===1 && !document.getElementById('typingIndicator')`), 'incomplete form downloads directly');
+        const state = await cdp.evaluate(`({generate:window.__generate,download:window.__downloads[0],last:[...document.querySelectorAll('#chatMessages .message.bot')].pop().textContent})`);
+        assert(state.generate.length===1 && state.generate[0].body.allow_incomplete===true && state.generate[0].status===200, `Incomplete form should be generated on request: ${JSON.stringify(state)}`);
+        assert(state.download.blob && state.download.name==='to-khai-de-nghi-ho-tro-chi-phi-mai-tang.docx', `Word file should download: ${JSON.stringify(state)}`);
+        assert(state.last.includes('để trống'), `User should be told blanks remain: ${state.last}`);
+        assert.equal(cdp.errors.length, 0, `Browser JS errors: ${JSON.stringify(cdp.errors)}`);
+        record('incomplete form: supplement shows choices, create-anyway downloads Word', {file:state.download.name});
+    } finally {await closePage(cdp);}
+}
+
+async function verifyFormRobustness() {
+    // Luồng điền đơn không được làm kẹt chatbot: phiên phỏng vấn hết hạn, câu
+    // trả lời mơ hồ ở bước chọn cách điền, và xóa hội thoại khi đang chờ máy chủ.
+    const cdp = await createPage({mockSpeech:true, width:1440, height:900});
+    const lastBot = `[...document.querySelectorAll('#chatMessages .message.bot')].pop()`;
+    const type = text => cdp.evaluate(`window.__mockDelay=10;document.getElementById('textInput').value=${JSON.stringify(text)};document.getElementById('sendTextBtn').click()`);
+    try {
+        await cdp.evaluate(`(async()=>{window.__formCalls=[];const realFetch=window.fetch;window.fetch=async(input,options)=>{const url=String(input);if(url.includes('/dien-don/api/')){window.__formCalls.push(url.replace(/^.*\\/dien-don\\/api/,''));if(url.endsWith('/interview/start')&&window.__slowStart)await new Promise(r=>setTimeout(r,600));}return realFetch(input,options);};await loadFormCatalog();})()`);
+
+        // 1. Phiên phỏng vấn hết hạn (máy chủ trả 410): dừng phỏng vấn, câu sau đến AI.
+        await cdp.evaluate(`formFlow={stage:'interview',templateId:'ho_tro_mai_tang',sessionId:'phien-da-het-han',fields:{}}`);
+        await type('Nguyễn Văn An');
+        await poll(() => cdp.evaluate(`${lastBot}.textContent.includes('Phiên phỏng vấn đã dừng')`), 'expired interview stops');
+        assert.deepEqual(await cdp.evaluate(`[...${lastBot}.querySelectorAll('.form-actions .chip-btn')].map(b=>b.textContent)`), ['Phỏng vấn lại','Chọn mẫu khác']);
+        await type('Giờ làm việc của phường?');
+        await poll(() => cdp.evaluate(`window.__speechMock.calls.requests.some(r=>r.message==='Giờ làm việc của phường?') && !document.getElementById('typingIndicator')`), 'chat works again after expired interview');
+
+        // 2. Bước chọn cách điền: "thôi" không bị hiểu là "hỏi"; câu hỏi khác đến AI.
+        await cdp.evaluate(`chooseFormTemplate('ho_tro_mai_tang', false)`);
+        await type('thôi, để sau');
+        await poll(() => cdp.evaluate(`${lastBot}.textContent.includes('Anh/Chị muốn tôi hỏi lần lượt')`), 'method stage re-prompts');
+        assert(!(await cdp.evaluate(`window.__formCalls.includes('/interview/start')`)), '"thôi" must not start an interview');
+        await type('Lệ phí bao nhiêu?');
+        await poll(() => cdp.evaluate(`window.__speechMock.calls.requests.some(r=>r.message==='Lệ phí bao nhiêu?') && !document.getElementById('typingIndicator')`), 'question during form flow reaches AI');
+        assert.equal(await cdp.evaluate(`formFlow`), null, 'Asking another question should leave the form flow');
+
+        // 3. Xóa hội thoại khi đang chờ máy chủ mở phỏng vấn: không lỗi, không ghi vào hội thoại mới.
+        await cdp.evaluate(`window.__slowStart=true;chooseFormTemplate('ho_tro_mai_tang', false);[...${lastBot}.querySelectorAll('.form-actions .chip-btn')].find(b=>b.textContent==='Phỏng vấn').click()`);
+        await openMenu(cdp);
+        await click(cdp, 'clearBtn');
+        await sleep(900);
+        const after = await cdp.evaluate(`({messages:document.querySelectorAll('#chatMessages .message').length,text:document.getElementById('chatMessages').textContent,flow:formFlow,busy:document.getElementById('sendTextBtn').disabled})`);
+        assert(after.messages===1 && !after.text.includes('phỏng vấn') && after.flow===null && !after.busy, `Clear during a pending form request should leave a clean welcome: ${JSON.stringify(after)}`);
+        assert.equal(cdp.errors.length, 0, `Browser JS errors: ${JSON.stringify(cdp.errors)}`);
+        record('form flow recovers from expired interview, vague replies and clear while pending');
     } finally {await closePage(cdp);}
 }
 
@@ -480,6 +565,9 @@ async function main() {
         await verifyLongConversation();
         await verifySuggestions();
         await verifyWelcomeQuestions();
+        await verifyFormShortcut();
+        await verifyIncompleteForm();
+        await verifyFormRobustness();
         await verifyAnimations();
         fs.writeFileSync(path.join(CHECKS_DIR, 'ui-smoke-results.json'), JSON.stringify({ ok: true, results }, null, 2));
         console.log(`Completed ${results.length} checks. Screenshots: .checks/mobile.png, .checks/desktop.png, .checks/conversation-mobile.png and .checks/listening-mobile.png`);
