@@ -1,0 +1,193 @@
+/* Trang "Mẫu đơn, tờ khai" (/mau-don). Nền, khung, đầu trang và khung chào lấy
+   từ chat.css để giống hệt trang chatbot; tệp này chỉ thêm danh sách mẫu đơn.
+   Thẻ mẫu đơn dùng cùng kiểu với thẻ tiện ích (.service-button) của chatbot. */
+
+/* Đầu trang chỉ có logo, tiêu đề và nút quay lại (không có trạng thái, menu). */
+.brand-row {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+.back-icon-btn {
+  text-decoration: none;
+}
+
+/* Vùng cuộn chứa lời chào và danh sách, giống vùng hội thoại của chatbot. */
+.form-library {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: clamp(12px, 1.8vh, 18px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: clamp(8px, 1.3vh, 14px) var(--pad) 18px;
+  scrollbar-width: thin;
+  scrollbar-color: #e2e4ea transparent;
+}
+.form-library::-webkit-scrollbar {
+  width: 5px;
+}
+.form-library::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+  background: #e2e4ea;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: clamp(8px, 0.75vw, 13px);
+}
+.form-card {
+  display: flex;
+  min-width: 0;
+  min-height: clamp(64px, 8vh, 78px);
+  align-items: center;
+  gap: clamp(10px, 0.8vw, 14px);
+  padding: 8px 12px 8px 8px;
+  border: 1px solid #f1e2e5;
+  border-radius: 14px;
+  color: var(--navy);
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(140, 40, 52, 0.06);
+  text-decoration: none;
+  transition:
+    background 0.16s,
+    border-color 0.16s,
+    box-shadow 0.16s,
+    transform 0.16s;
+  animation: serviceEnter 0.38s cubic-bezier(0.22, 0.8, 0.35, 1) backwards;
+  -webkit-tap-highlight-color: transparent;
+}
+.form-card:hover {
+  border-color: #f6b8c0;
+  background: #fff8f9;
+}
+.form-card-icon {
+  display: grid;
+  width: clamp(44px, 3vw, 54px);
+  height: clamp(42px, 2.8vw, 48px);
+  flex: none;
+  place-items: center;
+  border-radius: 12px;
+  color: var(--red);
+  background: linear-gradient(145deg, #fff1f3, #fde2e6);
+}
+.form-card-icon svg {
+  width: clamp(22px, 1.5vw, 27px);
+  height: clamp(22px, 1.5vw, 27px);
+  transition: transform 0.2s cubic-bezier(0.22, 0.8, 0.35, 1);
+}
+.form-card-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+.form-card-copy strong {
+  font-size: clamp(15.5px, 1.05vw, 18.5px);
+  font-weight: 600;
+  line-height: 1.2;
+}
+.form-card-copy small {
+  color: #7a869b;
+  font-size: clamp(12px, 0.8vw, 14px);
+  line-height: 1.25;
+}
+.form-card-chevron {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--red);
+}
+
+.library-notice {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 14px 18px;
+  border: 1px solid #f4d0d5;
+  border-radius: 16px;
+  color: var(--red-dark);
+  background: #fff4f5;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+/* Chân trang: nút đỏ quay lại trợ lý, cùng màu với nút micro của chatbot. */
+.library-footer {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex: none;
+  justify-content: center;
+  padding: 10px var(--pad) clamp(14px, 2.2vh, 22px);
+  border-top: 1px solid #f3edee;
+  background: #fff;
+}
+.back-pill {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 26px;
+  border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(120deg, #ee1a2a, #e10c1c);
+  box-shadow: 0 8px 20px rgba(227, 18, 31, 0.26);
+  font-size: 17px;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    box-shadow 0.16s,
+    transform 0.16s;
+  -webkit-tap-highlight-color: transparent;
+}
+.back-pill:hover {
+  box-shadow: 0 10px 24px rgba(227, 18, 31, 0.34);
+}
+.back-pill:active {
+  transform: scale(0.96);
+}
+.back-pill svg {
+  width: 19px;
+  height: 19px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .form-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(106, 38, 48, 0.08);
+  }
+  .form-card:hover .form-card-icon svg {
+    transform: translateY(-1px) rotate(-5deg) scale(1.06);
+  }
+  .form-card:active {
+    transform: scale(0.97);
+  }
+}
+
+@media (max-width: 700px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .form-card {
+    min-height: 60px;
+  }
+  .form-card-icon {
+    width: 42px;
+    height: 40px;
+  }
+  .form-card-copy strong {
+    font-size: 15.5px;
+  }
+  .library-footer {
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+  .back-pill {
+    min-height: 46px;
+    font-size: 16px;
+  }
+}

@@ -1,473 +1,73 @@
 <!doctype html>
 <html lang="vi">
-  <head>
-    <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover"
-    />
-    <meta name="theme-color" content="#ffffff" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
     <title>Mẫu đơn, tờ khai | Phường Minh Phụng</title>
-    <link
-      rel="icon"
-      href="{{ url_for('static', filename='images/logo-minh-phung.png') }}"
-    />
-    <!-- Màu, chữ, nền và kiểu nút lấy theo trang chatbot (static/css/chat.css) để hai trang đồng bộ. -->
-    <style>
-      :root {
-        --red: #ec1625;
-        --red-dark: #ce0c1b;
-        --ink: #252838;
-        --muted: #858895;
-        --font:
-          "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-        --ease: cubic-bezier(0.22, 0.8, 0.35, 1);
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        position: relative;
-        display: flex;
-        min-height: 100vh;
-        min-height: 100dvh;
-        justify-content: center;
-        align-items: flex-start;
-        margin: 0;
-        padding: 20px;
-        color: var(--ink);
-        background: radial-gradient(
-            ellipse at 20% 20%,
-            #fff,
-            #fff8f9 65%,
-            #fff0f2
-          )
-          fixed;
-        font-family: var(--font);
-        -webkit-font-smoothing: antialiased;
-      }
-      body::before {
-        position: fixed;
-        bottom: -160px;
-        left: -5%;
-        z-index: -1;
-        width: 115%;
-        height: 240px;
-        background: var(--red);
-        transform: rotate(-5deg);
-        content: "";
-      }
-      body::after {
-        position: fixed;
-        right: -70px;
-        bottom: 45px;
-        z-index: -1;
-        width: 210px;
-        height: 170px;
-        background: #ffda68;
-        clip-path: polygon(100% 0, 100% 100%, 0 100%);
-        content: "";
-      }
-      svg {
-        display: block;
-      }
-      a {
-        -webkit-tap-highlight-color: transparent;
-        touch-action: manipulation;
-      }
-      a:focus-visible {
-        outline: 3px solid #e8a51c;
-        outline-offset: 3px;
-      }
+    <link rel="icon" href="{{ url_for('static', filename='images/logo-minh-phung.png') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;500;600;700&display=swap">
+    <!-- Nền, khung, đầu trang và khung chào dùng chung kiểu của trang chatbot;
+         mau_don.css chỉ thêm phần danh sách mẫu đơn. -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mau_don.css') }}">
+</head>
+<body>
+    {% include "_backdrop.html" %}
 
-      .app-shell {
-        position: relative;
-        width: min(100%, 900px);
-        min-height: calc(100vh - 40px);
-        min-height: calc(100dvh - 40px);
-        overflow: hidden;
-        padding: 21px 30px 28px;
-        border: 1px solid #f2e9ea;
-        border-radius: 28px;
-        background: #fff;
-        box-shadow:
-          0 18px 60px #44252f10,
-          0 3px 12px #44252f05;
-      }
-      /* Hai hình thoi vàng nhạt trang trí, giống vùng hội thoại của trang chatbot. */
-      .app-shell::before,
-      .app-shell::after {
-        position: absolute;
-        z-index: 0;
-        background: #fff0bd;
-        transform: rotate(45deg);
-        content: "";
-        pointer-events: none;
-      }
-      .app-shell::before {
-        top: 42%;
-        right: -75px;
-        width: 150px;
-        height: 150px;
-        border-radius: 22px;
-      }
-      .app-shell::after {
-        bottom: 12%;
-        left: -46px;
-        width: 78px;
-        height: 78px;
-        border-radius: 14px;
-        background: #fff2c7;
-      }
-      .app-shell > * {
-        position: relative;
-        z-index: 1;
-      }
-
-      .brand-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        animation: enter 0.38s var(--ease) both;
-      }
-      .brand-identity {
-        display: block;
-        min-width: 0;
-        width: min(75%, 370px);
-      }
-      .brand-logo {
-        display: block;
-        width: 100%;
-        height: auto;
-      }
-      .round-btn {
-        display: grid;
-        width: 44px;
-        height: 44px;
-        flex: none;
-        place-items: center;
-        border-radius: 50%;
-        color: #454752;
-        background: #f3f4f6;
-        transition:
-          color 0.16s,
-          background 0.16s;
-      }
-      .round-btn:hover {
-        color: var(--red);
-        background: #ffe9ec;
-      }
-      .round-btn svg {
-        width: 22px;
-        height: 22px;
-      }
-
-      .page-heading {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        margin-top: 12px;
-        animation: enter 0.38s 0.04s var(--ease) both;
-      }
-      .page-heading h1 {
-        margin: 0;
-        color: var(--red);
-        font-size: 27px;
-        font-weight: 700;
-        letter-spacing: -0.5px;
-        line-height: 1.3;
-      }
-      .intro {
-        margin: 4px 0 20px;
-        color: var(--muted);
-        font-size: 14px;
-        line-height: 1.5;
-      }
-
-      .grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 13px;
-      }
-      .form-card {
-        display: flex;
-        min-height: 62px;
-        align-items: center;
-        gap: 12px;
-        padding: 11px 14px;
-        border: 1px solid #ffe0e4;
-        border-radius: 17px;
-        color: #292733;
-        background: linear-gradient(130deg, #fff5f6, #fff0f2);
-        font-size: 15px;
-        font-weight: 650;
-        line-height: 1.35;
-        text-decoration: none;
-        transition:
-          border-color 0.16s,
-          background 0.16s,
-          transform 0.16s;
-        animation: enter 0.38s var(--ease) backwards;
-      }
-      .form-card:hover {
-        border-color: #f8b1b9;
-        background: #ffe9ec;
-      }
-      .form-card:active {
-        transform: scale(0.98);
-      }
-      .form-icon {
-        display: grid;
-        width: 38px;
-        height: 38px;
-        flex: none;
-        place-items: center;
-        border-radius: 12px;
-        color: var(--red);
-        background: #fff;
-        box-shadow: 0 2px 6px #ec162512;
-      }
-      .form-icon svg {
-        width: 22px;
-        height: 22px;
-      }
-      .form-name {
-        flex: 1;
-        min-width: 0;
-      }
-      .open-icon {
-        width: 17px;
-        height: 17px;
-        flex: none;
-        color: #c9a3a8;
-        transition:
-          color 0.16s,
-          transform 0.16s;
-      }
-      .form-card:hover .open-icon {
-        color: var(--red);
-        transform: translate(2px, -2px);
-      }
-
-      .notice {
-        grid-column: 1 / -1;
-        margin: 0;
-        padding: 16px 18px;
-        border: 1px solid #ffe0e4;
-        border-radius: 17px;
-        color: var(--red-dark);
-        background: #fff2f3;
-        font-size: 14px;
-        line-height: 1.5;
-      }
-
-      .back-row {
-        display: flex;
-        justify-content: center;
-        margin-top: 26px;
-      }
-      .back-btn {
-        display: inline-flex;
-        min-height: 46px;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 22px;
-        border-radius: 999px;
-        color: #fff;
-        background: var(--red);
-        box-shadow: 0 6px 16px #ec162533;
-        font-size: 15px;
-        font-weight: 650;
-        text-decoration: none;
-        transition:
-          background 0.16s,
-          transform 0.16s;
-      }
-      .back-btn:hover {
-        background: var(--red-dark);
-      }
-      .back-btn:active {
-        transform: scale(0.96);
-      }
-      .back-btn svg {
-        width: 18px;
-        height: 18px;
-      }
-
-      @keyframes enter {
-        from {
-          opacity: 0;
-          transform: translateY(8px);
-        }
-        to {
-          opacity: 1;
-          transform: none;
-        }
-      }
-
-      @media (max-width: 600px) {
-        body {
-          padding: 0;
-          background: #fff;
-        }
-        body::before,
-        body::after {
-          display: none;
-        }
-        .app-shell {
-          width: 100%;
-          min-height: 100vh;
-          min-height: 100dvh;
-          padding: max(16px, env(safe-area-inset-top)) 18px
-            max(24px, env(safe-area-inset-bottom));
-          border: 0;
-          border-radius: 0;
-          box-shadow: none;
-        }
-        .brand-row {
-          gap: 12px;
-        }
-        .brand-identity {
-          width: min(calc(100% - 48px), 280px);
-        }
-        .round-btn {
-          width: 36px;
-          height: 36px;
-        }
-        .round-btn svg {
-          width: 19px;
-          height: 19px;
-        }
-        .page-heading h1 {
-          font-size: 23px;
-        }
-        .grid {
-          grid-template-columns: 1fr;
-          gap: 10px;
-        }
-        .form-card {
-          min-height: 58px;
-          font-size: 14.5px;
-        }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        *,
-        *::before,
-        *::after {
-          animation: none !important;
-          transition: none !important;
-        }
-      }
-    </style>
-  </head>
-  <body>
     <div class="app-shell">
-      <header>
-        <div class="brand-row">
-          <a
-            class="brand-identity"
-            href="/"
-            aria-label="Về trợ lý hành chính công phường Minh Phụng"
-          >
-            <img
-              class="brand-logo"
-              src="{{ url_for('static', filename='images/logo-minh-phung.png') }}"
-              width="816"
-              height="195"
-              alt="Trung tâm phục vụ hành chính công phường Minh Phụng – Hành chính phục vụ"
-            />
-          </a>
-          <a
-            class="round-btn"
-            href="/"
-            aria-label="Quay lại trợ lý"
-            title="Quay lại trợ lý"
-          >
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M19 12H5M11 18l-6-6 6-6" />
-            </svg>
-          </a>
-        </div>
-        <div class="page-heading">
-          <h1>Mẫu đơn, tờ khai</h1>
-        </div>
-        <p class="intro">Chọn nhóm mẫu đơn để mở thư mục và tải mẫu về.</p>
-      </header>
+        <header class="app-header">
+            <div class="brand-row">
+                <a class="brand-identity" href="/" aria-label="Về trợ lý hành chính công phường Minh Phụng">
+                    <img class="brand-logo" src="{{ url_for('static', filename='images/logo-minh-phung.png') }}" width="816" height="195" alt="Trung tâm phục vụ hành chính công phường Minh Phụng – Hành chính phục vụ">
+                </a>
+                <div class="assistant-heading">
+                    <h1>Mẫu đơn, tờ khai</h1>
+                    <p>Tải mẫu về máy - In ra - Điền và nộp tại phường</p>
+                </div>
+                <a class="menu-btn back-icon-btn" href="/" aria-label="Quay lại trợ lý" title="Quay lại trợ lý">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+                </a>
+            </div>
+        </header>
 
-      <main class="grid">
-        {% if error %}
-        <p class="notice">
-          ⚠️ Chưa tải được danh sách mẫu đơn. Bạn vui lòng thử lại sau ít phút.
-        </p>
-        {% endif %} {% for folder in folders %}
-        <a
-          class="form-card"
-          href="https://drive.google.com/drive/folders/{{ folder.id }}"
-          target="_blank"
-          rel="noopener"
-          style="animation-delay: {{ '%.2f'|format(0.06 + loop.index0 * 0.03) }}s"
-        >
-          <span class="form-icon"
-            ><svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-              <path
-                d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z"
-              />
-              <path
-                d="M14 2v6h6M8 12h8M8 16h8M8 19h5"
-                fill="none"
-                stroke="white"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              /></svg
-          ></span>
-          <span class="form-name">{{ folder.name }}</span>
-          <svg
-            class="open-icon"
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M7 17 17 7M8 7h9v9" />
-          </svg>
-        </a>
-        {% else %} {% if not error %}
-        <p class="notice">
-          📭 Hiện chưa có mẫu đơn nào. Bạn vui lòng quay lại sau.
-        </p>
-        {% endif %} {% endfor %}
-      </main>
+        <main class="form-library" aria-label="Danh sách nhóm mẫu đơn">
+            <div class="message bot welcome">
+                <div class="message-wrapper">
+                    <div class="avatar" aria-hidden="true"><span class="avatar-logo"><img src="{{ url_for('static', filename='images/robot-assistant.webp') }}" alt=""></span></div>
+                    <div class="message-content">
+                        <p>Kho mẫu đơn, tờ khai của phường Minh Phụng</p>
+                        <p>Chọn một nhóm bên dưới để mở thư mục và tải mẫu về. Muốn có đơn điền sẵn thông tin? Quay lại trợ lý và bấm <strong>Điền đơn tự động</strong>.</p>
+                    </div>
+                </div>
+            </div>
 
-      <div class="back-row">
-        <a class="back-btn" href="/">
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M19 12H5M11 18l-6-6 6-6" />
-          </svg>
-          Quay lại trợ lý
-        </a>
-      </div>
+            <div class="form-grid">
+                {% if error %}
+                <p class="library-notice">⚠️ Chưa tải được danh sách mẫu đơn. Bạn vui lòng thử lại sau ít phút.</p>
+                {% endif %}
+                {% for folder in folders %}
+                <a class="form-card" href="https://drive.google.com/drive/folders/{{ folder.id }}" target="_blank" rel="noopener" style="animation-delay: {{ '%.2f'|format(0.08 + loop.index0 * 0.03) }}s">
+                    <span class="form-card-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Z"/><path d="M14 2v6h6M8 12h8M8 16h8M8 19h5" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                    <span class="form-card-copy"><strong>{{ folder.name }}</strong><small>Mở thư mục mẫu</small></span>
+                    <svg class="form-card-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg>
+                </a>
+                {% else %}
+                {% if not error %}
+                <p class="library-notice">📭 Hiện chưa có mẫu đơn nào. Bạn vui lòng quay lại sau.</p>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </main>
+
+        <footer class="library-footer">
+            <a class="back-pill" href="/">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+                Quay lại trợ lý
+            </a>
+        </footer>
     </div>
-  </body>
+</body>
 </html>
